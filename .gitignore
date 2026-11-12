@@ -1,0 +1,25 @@
+# Rust / Tauri
+/target/
+/src-tauri/target/
+/dist/
+/node_modules/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Application data and databases
+*.sqlite
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm
+
+# Build and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
