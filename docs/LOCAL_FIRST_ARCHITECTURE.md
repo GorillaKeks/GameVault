@@ -1,6 +1,6 @@
 # Local-First Windows Architecture
 
-**Status:** proposed design constrained by owner-approved product decisions. **Date:** 2026-11-12. No application code exists.
+**Status:** proposed design constrained by owner-approved product decisions. **Date:** 2026-11-12. A basic Tauri scaffold and local installed-manifest detector now exist; planned persistence and account integrations do not.
 
 ## Confirmed boundaries
 
@@ -73,7 +73,7 @@ Cache invalidation: rescan manifests when library state changes; replace a snaps
 
 ## Blocking architectural choice
 
-The mandatory owned-library and achievement features do not follow from local manifests. The backendless remote option is a per-user Web API key sent directly from GameVault to Steam; Valve confirmation is needed for application/domain registration, client-side use, confidentiality, public host and endpoint rules. Local `appcache/stats` reads would rely on undocumented binary formats and remain best-effort. See [`V1_FEATURE_FEASIBILITY.md`](V1_FEATURE_FEASIBILITY.md). No route is accepted for those features yet.
+The mandatory owned-library and achievement features do not follow from local manifests. The backendless remote option is a per-user Web API key sent directly from GameVault to Steam; Valve confirmation is needed for application/domain registration, client-side use, confidentiality, public host and endpoint rules. On 2026-11-12 the owner authorized pursuit of a read-only SAM-inspired client/cache adapter for connection, game matching and achievement reads. This path remains unsupported, best-effort and version-sensitive, and does not provide a complete account library. See [`SAM_READ_ONLY_INTEGRATION.md`](SAM_READ_ONLY_INTEGRATION.md), [`V1_FEATURE_FEASIBILITY.md`](V1_FEATURE_FEASIBILITY.md), and ADR-007. No implementation exists yet.
 
 Current ADR statuses: ADR-001 **Proposed**, ADR-002 **Proposed**, ADR-003 **Accepted** (owner-confirmed SQLite), ADR-004 **Proposed**, ADR-005 **Proposed** (FOSS confirmed, exact license pending), ADR-006 **Accepted** (owner-confirmed local-only topology).
 

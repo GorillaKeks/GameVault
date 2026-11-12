@@ -1,11 +1,11 @@
 # GameVault Architecture Proposal
 
-**Status:** Proposed; no application code exists. **Research date:** 2026-11-12.
+**Status:** Proposed architecture; initial Tauri scaffold and read-only local manifest detector now exist in `../app`. **Research date:** 2026-11-12.
 
 ## Goals and constraints
 
 - Windows desktop, Steam only for v1.
-- Local-first, read-only Steam integration unless separately approved.
+- Local-first Steam integration. Owner has approved pursuit of a narrow SAM-inspired read-only Steam client/schema path; no writes are allowed.
 - Do not make account linking or Steam data availability assumptions before the API access gate is cleared.
 - Keep Steam integration isolated without introducing a general multi-platform plugin system.
 - Keep all frontend-to-native operations explicit and narrowly scoped.
@@ -16,7 +16,8 @@
 React + TypeScript UI
         │ typed DTOs over Tauri IPC
         ▼
-Rust application layer ───── Steam read-only adapter (only approved API calls)
+Rust application layer ───── Steam Web API adapter (only after Valve clearance)
+        │                     Steam client/cache adapter (owner-approved read-only path)
         │
         ├── domain and progress calculations
         ├── repository / migration layer
@@ -43,7 +44,7 @@ docs/                         decisions, research, security and user docs
 - **React UI:** rendering, accessible interaction, view state, and display of explicit unavailable/private/error states. No API keys, direct SQLite access, or raw filesystem authority.
 - **Tauri commands:** small typed operations such as reading cached library data or requesting a refresh. Validate every parameter and returned DTO. Avoid generic command dispatch and arbitrary path access.
 - **Rust application layer:** orchestration, validation, domain calculations, throttling/timeouts, error mapping, and secrets boundary if an approved flow later requires secrets.
-- **Steam adapter:** only documented and approved interfaces, with typed responses and provider-specific errors. It must not inspect processes, memory, or undocumented protocols.
+- **Steam adapters:** keep documented Web API calls separate from the owner-approved, unsupported SAM-inspired local adapter. The latter is limited to the logged-in Steam client, known AppIDs and achievement reads/schema. It must not inject into games, inspect processes/memory, read credentials/session files, or call write/reset methods. Unknown interfaces or schemas fail closed. See [`SAM_READ_ONLY_INTEGRATION.md`](SAM_READ_ONLY_INTEGRATION.md) and [ADR-007](decisions/ADR-007-read-only-steam-client-integration.md).
 - **Storage:** SQLite behind Rust repository methods. Use schema migrations, parameterized statements, transactions, stable identifiers, and backup/restore verification. Store a minimal cache and distinguish remote facts from local user annotations.
 - **Logging:** structured and useful for diagnosis, but redact account identifiers where unnecessary and never log API keys, credentials, tokens, cookies, or full profile payloads.
 
@@ -65,7 +66,7 @@ This is a discussion model, not an implementation decision. Do not treat missing
 
 ## Integration and auth design
 
-The owner explicitly prohibits a GameVault backend/server. Steam's player-data Web API methods list a user Web API key; user-key registration requires an associated domain, while publisher keys require a Steamworks group and must stay server-side. Steam OpenID is documented as a browser-based website flow, not a validated native desktop callback. Never ship a shared key. The only account-data route still under investigation is a user-provided individual key sent directly to Steam, with Windows protected storage; Valve must confirm app/domain registration, use by a third-party desktop app, confidentiality and host/key pairing before any implementation. See [Steam integration research](STEAM_INTEGRATION.md) and [feature feasibility](V1_FEATURE_FEASIBILITY.md).
+The owner explicitly prohibits a GameVault backend/server. Steam's player-data Web API methods list a user Web API key; user-key registration requires an associated domain, while publisher keys require a Steamworks group and must stay server-side. Steam OpenID is documented as a browser-based website flow, not a validated native desktop callback. Never ship a shared key. The personal user-key route remains under investigation pending Valve confirmation. Separately, the owner has approved pursuit of a read-only Steam client/schema adapter as in [ADR-007](decisions/ADR-007-read-only-steam-client-integration.md); this private interface does not promise complete ownership or playtime data and is not represented as Valve-supported. See [Steam integration research](STEAM_INTEGRATION.md) and [feature feasibility](V1_FEATURE_FEASIBILITY.md).
 
 Steam OpenID is documented for third-party websites to authenticate a SteamID without collecting a password. A native callback has not been validated, and a website flow would require a server contrary to the owner decision. OpenID identity alone does not guarantee access to private game details or achievements. It is not selected for v1.
 
@@ -98,14 +99,14 @@ Choose NSIS or MSI only after installer/update requirements are clear. Sign publ
 ## Architecture decisions still open
 
 1. Whether Valve permits an individual user key to be used directly by a distributed desktop app, and the correct endpoint host/domain/application registration.
-2. Exact boundary for narrow read-only manifest/localconfig scanning versus unsupported binary cache parsing. Phase 1.6 authorizes research and keeps the integration Proposed.
+2. Keep the read-only SAM-inspired interface/schema boundary narrow and fail closed; see ADR-007. Do not expose write functions.
 3. Exact Rust SQLite library and migration mechanism (`sqlx` is only a candidate).
 4. Project license, third-party asset strategy, and application name clearance.
 5. Installer, update, signing, and support strategy.
 
 ## Phase 1.5/1.6 review outcome (2026-11-12)
 
-The owner has approved the local-only technology/topology constraints: Tauri 2 / React / TypeScript / Rust / SQLite and no GameVault backend/server. The Phase 1.5 hosted-backend idea is superseded. Exact API access, data schema, Rust SQLite crate and license remain unresolved; no application code is approved in this phase.
+The owner has approved the local-only technology/topology constraints: Tauri 2 / React / TypeScript / Rust / SQLite and no GameVault backend/server. The Phase 1.5 hosted-backend idea is superseded. The scaffold contains no SQLite layer yet. Exact API access, data schema, Rust SQLite crate and license remain unresolved. The local detector does not call Steam client interfaces or read achievement schema data.
 
 See [`LOCAL_FIRST_ARCHITECTURE.md`](LOCAL_FIRST_ARCHITECTURE.md), [`LOCAL_STEAM_DATA.md`](LOCAL_STEAM_DATA.md), [`V1_FEATURE_FEASIBILITY.md`](V1_FEATURE_FEASIBILITY.md) and [`decisions/`](decisions/). Valve's overview says every call to `partner.steam-api.com` requires a publisher key, while player method references show partner-host examples for methods listing user keys. Confirm the correct public-host/user-key arrangement rather than infer it. The four mandatory features remain in scope; current conclusion is conditional pending Valve's answer.
 

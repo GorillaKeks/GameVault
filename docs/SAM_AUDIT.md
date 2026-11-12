@@ -27,9 +27,11 @@ Steam Achievement Manager (SAM) and ArchiSteamFarm (ASF) are separate products. 
 
 ### Recommendation for SAM
 
-**Do not reuse or integrate for v1; research reference only.** The existing implementation is x86 Windows Forms/.NET Framework, directly loads Steam client internals, reads local Steam cache data, and supports achievement/stat writes. This does not solve GameVault's documented Web API key/authentication blocker and conflicts with the read-only product direction. The zlib license is permissive subject to its notice/modified-source conditions, but that alone does not clear the native interface, asset, Steam policy, security, or supportability risks.
+**Do not copy SAM source or assets.** The existing implementation is x86 Windows Forms/.NET Framework, directly loads Steam client internals, reads local Steam cache data, and supports achievement/stat writes. Its implementation does not solve GameVault's documented Web API key/authentication blocker and does not establish Valve support for a third-party companion.
 
-If reconsidered, first inventory every proposed source file, transitive dependency, generated/native asset, and icon license; review current Valve policy; and obtain owner approval for the exact read/write feature. Do not copy code or assets in the meantime.
+The owner later explicitly directed GameVault to pursue a **read-only** version of SAM discussion points 1–3 (connect to the logged-in client, choose/match games, read achievements). This approves further work on that narrow product direction; it does not approve code/assets reuse, claim Valve permission, or permit setters/resets/stats storage. The technical design and remaining limitations are recorded in [`SAM_READ_ONLY_INTEGRATION.md`](SAM_READ_ONLY_INTEGRATION.md). The zlib license is permissive subject to its notice/modified-source conditions, but it alone does not clear the Steam client interface, undocumented schema format, separate icon assets, policy, security, or compatibility risks.
+
+Before code, keep the implementation clean-room unless exact-source reuse separately passes file/dependency/asset provenance and license review. The read-only boundary must exclude `SetAchievement`, `ClearAchievement`, `SetStat`, `StoreStats`, `ResetAllStats`, process injection, memory inspection and credential/session-file access. The SAM-hosted `games.xml` is not a complete owned-library source and is not adopted as a GameVault dependency by this review.
 
 ## ASF — `JustArchiNET/ArchiSteamFarm`
 
@@ -55,7 +57,7 @@ If reconsidered, first inventory every proposed source file, transitive dependen
 
 ## Overall gate and remaining audit limits
 
-- No SAM-derived code or behavior is approved. Achievement unlock, clear, reset, stat editing, account automation, and anti-cheat-sensitive actions remain out of scope.
+- No SAM source or assets are approved for reuse. The owner has authorized only the read-only SAM-inspired points 1–3 as a direction to pursue. Achievement unlock/clear/reset, stat editing/storage, account automation, and anti-cheat-sensitive actions remain out of scope.
 - No code or assets from ASF or SAM are present in GameVault.
 - Remaining before any reuse: full dependency/asset inventory for the exact files proposed, a fuller source audit, current Steam policy review, license compatibility review, and explicit owner approval.
 
@@ -63,7 +65,7 @@ If reconsidered, first inventory every proposed source file, transitive dependen
 
 The specific question for this phase is whether SAM or ASF should become a GameVault dependency or supply v1 behavior. The recommendation for **both** is **research reference only; excluded from v1**. Neither is a dependency, and no files/assets were copied. SAM's direct Steam client DLL/interface coupling, local schema dependency and achievement/stat mutation conflict with GameVault's read-only documented-API boundary. ASF's multi-account automation, SteamKit2 protocol surface, credentials/Steam Guard, service/plugin architecture and broad dependency graph do not fit a read-only Rust/Tauri companion.
 
-This does not certify either project as legally or technically safe to reuse. The review was a bounded reading of the listed files/repository metadata, not an exhaustive transitive dependency, binary, security or policy audit. SAM's icon credits need a separate asset license review. ASF's full dependency and bundled asset notices need review if an exact component is ever proposed. No definitive claim is made about Valve's policy treatment of all SAM/ASF use cases.
+This does not certify either project as legally or technically safe to reuse. The review was a bounded reading of the listed files/repository metadata, not an exhaustive transitive dependency, binary, security or policy audit. SAM's icon credits need a separate asset license review. ASF's full dependency and bundled asset notices need review if an exact component is ever proposed. No definitive claim is made about Valve's policy treatment of all SAM/ASF use cases. The owner's read-only direction is not evidence of Valve approval.
 
 Reviewed upstream heads rechecked 2026-11-12: SAM `de8b71048a0cee3c3e97cd8535e0f55ca86513e4`; ASF `9d34daacea8ab785ca22af4685daa76e29fdf9c9`. Any future review must pin exact commit/file provenance rather than rely on moving branch names. No implementation is authorized by this audit.
 

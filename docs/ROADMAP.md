@@ -1,6 +1,6 @@
 # GameVault Roadmap
 
-**Status date:** 2026-11-12. No application features or scaffold exist.
+**Status date:** 2026-11-12. Initial Tauri scaffold and local installed-manifest inspection prototype created; no Steam client calls or achievement reads yet.
 
 ## Phase 0 — Repository and initial feasibility baseline (complete)
 
@@ -17,27 +17,33 @@
 - Recommended Apache-2.0 and prepared a clearly non-operative candidate marker. Exact license text/copyright holder still await owner approval. See [`OPEN_SOURCE_LICENSE_RECOMMENDATION.md`](OPEN_SOURCE_LICENSE_RECOMMENDATION.md).
 - Updated ADRs. Local Tauri topology and SQLite choice reflect explicit owner decisions; the Steam API/key flow and exact license remain Proposed.
 
-### Open approval and evidence gates
+### Remaining evidence gates
 
 1. Obtain Valve's answer about individual user API keys in a distributed desktop app, key/domain/application registration, the confidential/no-sharing obligation and correct public host for player methods.
-2. Decide whether unsupported local binary achievement cache parsing may be considered if Valve disallows the direct per-user key path. Current recommendation is not to rely on it as the primary source.
+2. Before implementation of the newly owner-approved read-only SAM-inspired path, complete the native-boundary threat review and define supported Steam client/interface versions and parser failure behavior. See [`SAM_READ_ONLY_INTEGRATION.md`](SAM_READ_ONLY_INTEGRATION.md) and ADR-007. The path is unsupported and not evidence of Valve approval.
 3. Approve the exact project license (recommended Apache-2.0) and confirm copyright holder before adding a root `LICENSE`.
 4. Keep the four features mandatory. If permitted sources cannot support them, return to the owner for a product decision; do not remove or downgrade one.
-5. Resolve the conflict with the older `MASTER_PROMPT.md`, which still excludes Steam file scraping and allows no change without authorization. Phase 1.6 authorizes research and design of narrow read-only VDF/ACF scanning; the master file was intentionally left unchanged.
+5. `MASTER_PROMPT.md` now records the owner's explicit read-only points 1–3 direction. No SAM code/assets or write capability is approved.
 
-## Phase 1 — Technical foundation (not started)
+## Phase 1 — Technical foundation (scaffold created; initial local inspection prototype)
 
-1. Resolve Valve/key and achievement-source gates above.
-2. Update Node.js 24.22.1 to a current supported LTS security patch; choose npm or pnpm.
-3. Select exact Tauri/React/TypeScript/Rust/SQLite versions and libraries; review licenses, MSRV, Windows build behavior and maintenance.
-4. Confirm MSVC/Windows SDK detection and run a minimal Tauri shell build after scaffold authorization. The current environment was diagnosed but no build was performed.
-5. Approve implementation-ready architecture/ADR status.
+Phase 1.7 readiness audit is complete. The owner authorized the read-only points 1–3 path; the initial scaffold now exists. Remaining gates and validation are:
 
-## Phase 2 — Minimal desktop scaffold (await explicit authorization)
+1. Keep the Valve user-key inquiry open; the ready-to-send draft is in [`PHASE_1_7_DECISION_PACKAGE.md`](PHASE_1_7_DECISION_PACKAGE.md). The local client path is a separate, owner-approved direction, not a replacement for evaluating complete account data.
+2. Complete the native boundary, Steam client compatibility and local schema parser design in [`SAM_READ_ONLY_INTEGRATION.md`](SAM_READ_ONLY_INTEGRATION.md) and ADR-007 before code.
+3. Select the project license and copyright holder; do not add a root `LICENSE` until approved.
+4. Node.js was not globally upgraded because Windows Installer requested administrator consent; a checksum-verified portable Node `26.13.1` was downloaded to a user-local tools folder. npm is selected for this scaffold.
+5. Confirm exact dependency versions/features and review licenses, MSRV, Windows build behavior and maintenance using [`FOUNDATION_READINESS.md`](FOUNDATION_READINESS.md).
+6. Record the owner authorization to pursue read-only points 1–3 in ADR-007; do not expand to writes or represent partial ownership as complete.
 
-- Create empty Tauri 2 + React/TypeScript + Rust structure, no Steam data functionality.
+The environment audit found MSVC Build Tools, Windows SDK and WebView2 Runtime installed. `cargo tauri` is available through Cargo (`tauri-cli 2.12.4`), but a standalone `tauri` command and SQLite CLI are not on PATH. No build was run; compiler/linker integration remains unverified.
+
+## Phase 2 — Minimal desktop scaffold (created; build not verified)
+
+- Created the Tauri 2 + React/TypeScript + Rust structure in `app/`, branded it GameVault, removed the unused opener plugin, and set an initial restrictive CSP.
+- Added a bounded read-only detector for conventional Steam roots, library folders and installed `appmanifest` files. It reports schema-file presence only; it does not read schema bytes or connect to Steam.
 - Add formatting/type/lint/Rust quality commands and narrow Tauri permissions.
-- Build and smoke-check on Windows; document actual tool versions/results.
+- Install dependencies, build and smoke-check on Windows; document actual tool versions/results.
 
 ## Phase 3 — Local database and installed-game discovery
 
@@ -48,10 +54,11 @@
 
 ## Phase 4 — Approved account data: library, playtime and achievements
 
-- Implement only a Valve-confirmed no-backend direct user-key approach, if approved.
+- Pursue the owner-approved read-only Steam client/schema adapter under ADR-007; fail closed on missing schema/unsupported interfaces and never call write methods.
+- Implement the direct user-key Web API path only if Valve confirms the registration/host/terms pattern.
 - Preserve private/unavailable/stale/unsupported states and exact user consent/refresh behavior.
 - Add only verified API fields and locally protected key handling; no shared key and no uploads.
-- If key use is rejected, stop and request an owner decision rather than silently relying on a reverse-engineered cache or reducing required scope.
+- The local SAM-inspired route does not complete the owned library/playtime requirements. If no permitted source supports all mandatory features, return for an owner decision rather than reducing scope.
 
 ## Phase 5 — Release readiness
 
@@ -63,4 +70,4 @@
 - Research is separate from implementation; no feature is claimed complete based on a file's presence alone.
 - No API, license, security or compatibility result is claimed without evidence.
 - Phase 1.6 assessment: **CONDITIONAL GO** for continued planning; account library and achievements remain gated by Valve. All four features remain required.
-- Do not start Phase 2 automatically. Wait for explicit owner authorization.
+- The owner has authorized pursuit of read-only points 1–3. The current prototype implements only local install/manifest discovery; client connection and achievement reading remain unimplemented. This does not authorize account/stat writes, SAM source reuse, or unsupported completeness claims.

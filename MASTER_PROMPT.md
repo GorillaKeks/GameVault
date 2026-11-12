@@ -1,5 +1,7 @@
 # GameVault — Master Prompt for ChatGPT Work / Codex
 
+> **Repository update (2026-11-12):** An initial Tauri scaffold is present in `app/`, with a read-only local Steam install/manifest detector. Steam client connection and achievement reads remain unimplemented; see `docs/SAM_READ_ONLY_INTEGRATION.md`. Earlier milestone-specific “no implementation” statements below describe those historical phases.
+
 ## How to use this document
 
 Treat this file as the standing product and engineering brief for work in the GameVault project. At the start of each task:
@@ -52,9 +54,11 @@ These are product goals, not promises that Steam exposes every requested field o
 
 **In scope:** Windows desktop app; Steam only; library and progress presentation; local preferences and cache; basic local organization; documented import/export/backup paths; accessibility and responsive desktop layouts; privacy and security appropriate for a local account-connected application.
 
-**Out of scope unless explicitly approved later:** other storefronts/platforms; cloud sync or hosted accounts; social network features; game launching/modification; automated gameplay or achievement manipulation; anti-cheat evasion; unsupported memory/process inspection; Steam client file scraping; any achievement unlock/reset/alteration feature; and claims of Valve/Steam affiliation.
+**Out of scope unless explicitly approved later:** other storefronts/platforms; cloud sync or hosted accounts; social network features; game launching/modification; automated gameplay or achievement manipulation; anti-cheat evasion; memory inspection, process injection or Steam credential/session-file access; broad Steam client file scraping; any achievement unlock/reset/alteration feature; and claims of Valve/Steam affiliation.
 
-An achievement management or SAM-derived capability is **not approved by this brief**. Treat it as a separate feasibility gate, not a v1 promise. Any possible read/write capability must first pass the SAM audit and Steam policy/API/security review below and receive explicit product approval before implementation.
+**Owner direction recorded 2026-11-12:** pursue only a read-only, SAM-inspired route for (1) connecting to the already logged-in local Steam client, (2) matching candidate AppIDs against that client, and (3) displaying achievement definitions/earned state. This is a research/implementation direction, not a claim that Valve supports or endorses the private interface, and not approval to copy SAM code/assets. Keep achievement/stat writes, resets, launch/modification, process injection, memory inspection, credentials, cookies and session files prohibited. The route, source limitations and remaining gates are documented in `docs/SAM_READ_ONLY_INTEGRATION.md`.
+
+The read-only route still requires the SAM provenance/license/architecture audit and a Steam policy, security and compatibility review. Use a clean implementation unless exact-source reuse separately passes provenance and license review. Do not silently claim the SAM-hosted catalog is a complete owned library: complete account library and playtime remain subject to their own source gate. Do not start Steam integration code until the narrow read-only boundary and failure behavior are reflected in an ADR and reviewed against the security baseline.
 
 ## Architecture direction
 
@@ -91,7 +95,7 @@ SAM means Steam Achievement Manager or any code derived from it. Before copying,
 - Review contribution, attribution, trademark, redistribution, modification, and dependency obligations with a qualified reviewer when needed. Record provenance and required notices.
 - Audit the architecture and behavior for process inspection, undocumented interfaces, writes to Steam/game state, anti-cheat or account risk, and compatibility with the product's safety boundaries and Steam policies.
 - Assess whether the intended use is legal, permitted, supportable, and appropriate for a general consumer app. Keep this as an explicit unresolved question until evidence is gathered.
-- Present a written go/no-go recommendation, alternatives (including a clean-room implementation limited to documented permitted interfaces), and risks. Do not import or implement SAM-derived code before the gate is passed and the user explicitly approves the feature.
+- Present a written go/no-go recommendation, alternatives (including a clean-room implementation of the explicitly owner-approved read-only path), and risks. Do not import SAM-derived code/assets before exact provenance/license review. Never implement SAM's write/reset behavior under the current read-only approval.
 
 Never claim that an achievement action is safe, undetectable, endorsed, or policy-compliant without strong current evidence. Do not implement anti-cheat bypass or stealth behavior.
 
