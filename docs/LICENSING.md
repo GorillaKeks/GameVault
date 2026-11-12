@@ -1,39 +1,49 @@
 # Licensing, Attribution, and Branding
 
-**Status:** unresolved; no project license or third-party runtime dependencies have been adopted. **Research date:** 2026-11-12.
+**Status:** no license chosen; no third-party runtime dependencies adopted. **Research date:** 2026-11-12. This comparison is informational, not legal advice.
 
-## Decisions required
+## Practical project-license options
 
-1. Select GameVault's own source-code license before accepting external contributions or distributing source/binaries. This is a product-owner decision; do not infer it from an empty GitHub repository.
-2. Add the chosen license and any contribution policy only after review of intended distribution, dependencies, and contribution model.
-3. Maintain a third-party notice inventory for Rust crates, npm packages, fonts, icons, artwork, generated assets, and copied snippets.
-4. Review trademark/name/domain collisions for “GameVault” before public release. The project name and tagline are working labels only.
+| Option | Practical effect if GameVault is distributed | Trade-off |
+|---|---|---|
+| **MIT** | Permissive; downstream users may reuse/modify/redistribute, including in proprietary products, while retaining copyright and permission notices. | Short and familiar. The text does not include the detailed contributor patent license found in Apache-2.0. |
+| **Apache-2.0** | Permissive commercial reuse and redistribution with preservation of license/copyright notices, marking modified files, and any applicable NOTICE; includes an express contributor patent license. | More detailed notice/compliance requirements. It does not grant trademark rights. |
+| **GPL-3.0-only** | Allows distribution and modification, but conveyed derivative/combined works are subject to GPLv3 source and same-license conditions, with applicable notices and corresponding-source obligations. | Strong copyleft may be a deliberate community goal, but affects how derivatives and dependencies can be combined/distributed. |
 
-## Third-party reuse rules
+Primary license texts: [MIT](https://opensource.org/license/mit/), [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0.txt), and [GNU GPL-3.0](https://www.gnu.org/licenses/gpl-3.0.html). Review the exact text before adoption.
 
-- Record exact source URL, revision/version, author, license text, copyright notices, modifications, and distribution obligations before reuse.
-- Preserve upstream copyright and license text. Do not copy code just because it is public on GitHub.
-- Review all transitive dependencies and bundled native libraries for license compatibility and redistribution rules.
-- No Steamworks SDK, SAM, ASF, SteamKit2, game artwork, or Steam branding assets have been copied into this repository.
+### Recommendation (not a decision)
 
-## Steam and Valve data/assets
+If the goal is an openly licensed desktop app that can be reused in both open and proprietary downstream software, **Apache-2.0 is a reasonable default recommendation** because it is permissive and contains an express patent grant. MIT is a simpler alternative if minimal conditions matter more. GPL-3.0-only is appropriate if the owner deliberately wants reciprocal copyleft for distributed derivatives.
 
-Steam Web API Terms allow access and distribution of Steam Data subject to their conditions, including a privacy policy for nonpublic user data, user-requested retrieval, disclosure of storage and countries, “as is” presentation and a confidential API key. They prohibit presenting the app as endorsed/affiliated and prohibit certain misuse. Terms currently show a 2010 update and must be rechecked before implementation or release: [Steam Web API Terms](https://steamcommunity.com/dev/apiterms).
+The owner must choose. This document does not grant permission to add a `LICENSE` file or license the project. Confirm intended commercial use, contribution model, and desired downstream freedoms before deciding.
 
-Use Steam/Valve marks descriptively, follow current brand guidance, and state that GameVault is independent. Do not redistribute game images/assets from a source unless the applicable rights and caching rules have been verified. A Steam API license does not automatically grant rights to every game's artwork or other assets.
+## Third-party reuse and notices
 
-## External audit reference: ASF
+- Track exact source URL, revision/version, author, license text, notices, modifications, and distribution obligations for every code, package, font, icon, artwork, and generated asset.
+- Review direct and transitive dependencies and bundled native libraries. Do not infer an asset's license from the code repository license.
+- SAM is under zlib terms in its current upstream `LICENSE.txt`; its README also attributes icons to Fugue Icons. No SAM code or icon asset was copied. See [SAM/ASF audit](SAM_AUDIT.md).
+- ASF is under Apache-2.0, but it is not approved as a dependency. Its dependency and account-automation surface requires an independent review; Apache-2.0 does not make it fit GameVault or grant Steam-related permissions.
+- No Steamworks SDK, SAM, ASF, SteamKit2, game artwork, or Steam logo has been copied into this repository.
 
-The requested ArchiSteamFarm repository currently links an Apache-2.0 license and its `LICENSE.txt` contains Apache License 2.0. Reuse would require retaining license/copyright notices, including a copy of the license and handling any upstream NOTICE file and modifications as Apache-2.0 requires. This is not legal advice. See [ASF repository](https://github.com/JustArchiNET/ArchiSteamFarm) and [ASF license](https://github.com/JustArchiNET/ArchiSteamFarm/blob/main/LICENSE.txt).
+## Steam/Valve branding, data, and artwork
 
-ASF and Steam Achievement Manager (SAM) are distinct projects. The likely upstream SAM repository, `gibbed/SteamAchievementManager`, currently contains a zlib license notice. If any code is reused, preserve the notice, identify modifications, review all bundled dependencies/assets (including Fugue Icons attribution in its README), and record provenance. The preliminary SAM audit recommends no reuse for v1; see [SAM/ASF audit](SAM_AUDIT.md). These findings are not legal advice.
+Steam Web API Terms (currently marked as last updated July 2010) contain conditions for API access and Steam Data presentation, user request/consent, confidentiality, privacy policy, storage-country disclosure, and call volume. Recheck the current terms before implementation/release: [Steam Web API Terms](https://steamcommunity.com/dev/apiterms).
+
+Valve's [Steam Branding Guidelines](https://partner.steamgames.com/doc/marketing/branding) say use of the logo must not imply endorsement/affiliation and specify approved artwork and legal attribution rules. The guidelines can change. GameVault should remain visually independent and carry a clear non-affiliation statement.
+
+The Web API terms and branding guidance reviewed do not establish blanket redistribution rights for every game icon, capsule, or store image. Do not package Steam/game art. For any runtime display or cache, identify the exact documented source and verify the applicable terms, attribution, and retention before implementation.
+
+## Product name and domain
+
+“GameVault” and “Your Gaming Progress. One Place.” remain working choices. No trademark, product-name, domain, or confusingly similar project clearance has been performed. Recheck before publishing the app, website, or store listing; no legal conclusion is made here.
 
 ## Release checklist
 
-- [ ] Project license selected and present.
-- [ ] Third-party notices generated/reviewed from actual dependency set.
-- [ ] Steam API key and data use match current Valve terms and app registration.
-- [ ] Privacy policy describes collection, storage location/country, retention and deletion.
-- [ ] Game/Steam artwork and trademarks reviewed.
-- [ ] Product name/trademark/domain review completed.
-- [ ] Windows signing, updater key handling and notices reviewed.
+- [ ] Owner selects a project license; add exact upstream text and license identifier.
+- [ ] Third-party notices generated/reviewed from the actual dependency and asset inventory.
+- [ ] Steam API key/app registration and data use comply with current Valve terms.
+- [ ] Privacy notice states requested data, storage, location/country, retention, and deletion.
+- [ ] Game artwork, Steam logo and trademark use reviewed against current guidance.
+- [ ] Product name/domain clearance completed.
+- [ ] Windows signing/updater key handling and release notices reviewed.

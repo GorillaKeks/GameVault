@@ -1,81 +1,92 @@
-# Steam Integration Research
+# Steam Integration Feasibility
 
-**Research date:** 2026-11-12. Valve API and policy details can change; re-check before implementation and release. Findings below are technical research, not legal advice or confirmation of individual access.
+**Research date:** 2026-11-12. Findings reflect the primary Valve/Steam material linked below as inspected on this date. Recheck before implementation and release. This is a technical and product assessment, not legal advice or confirmation of access for an individual account.
 
 ## Executive assessment
 
-**Conditional / not implementation-ready.** Steam documents a Web API and Steam OpenID, but the library and achievement methods relevant here require an API key. Valve's API terms state that the key is confidential, personal to the registrant and specific to the application named in the signup form. A public desktop binary cannot keep a shared key secret. Several Steamworks methods are explicitly intended for trusted/secure servers. No approved backend, publisher relationship, or supported local-only key distribution model has been established.
+**Conditional; not implementation-ready for Steam account data.** Valve documents APIs for owned games, playtime, profile summaries, and achievements, but the relevant player-data calls require a Web API user key. Valve documents that user keys are registered to a domain and tied to the registrant's application; it requires key confidentiality. Publisher keys have stronger access, require a Steamworks publisher group, and must be kept server-side. Steam OpenID is documented as a browser-based website flow that returns a SteamID; it does not grant private profile or library access, and the reviewed documentation does not define a native desktop redirect/loopback flow.
 
-Do not begin account linking or call these APIs from a shipped client until the exact API key and authentication model is confirmed with current Valve documentation and terms. Never request a Steam password or persist cookies/session credentials.
+No GameVault domain, Web API registration, backend, privacy policy, or key model exists. Do not ship a shared key in the desktop app or start Steam account integration until the owner chooses a permitted deployment model and the exact key/redirect arrangements are confirmed against current Valve requirements.
 
-## Access categories
+## Key and API access distinctions
 
-| Method | What it can provide | Access / limitations | GameVault position |
+Valve says some Web API methods expose public data without authorization; others require a user key; protected methods require a publisher key and special permissions. User keys are available to Steam account holders but registration requires an associated domain and agreement to the API Terms. Publisher keys are connected to a Steamworks publisher account/group and are intended for requests from secure publisher servers; Valve says not to distribute them with a game client.
+
+The API Terms identify use with the application named in the key signup, require the key to remain confidential, say Steam Data must be retrieved as requested by an end user, require a privacy policy and disclosure of storage/countries for nonpublic user data, and currently state a limit of 100,000 calls per day. The Terms page shows a July 2010 update date, so all terms must be checked again before launch. The documentation reviewed did not state per-endpoint quotas.
+
+**Implications:**
+
+- A shared key compiled into GameVault, a frontend bundle, public source, or distributable binary is not acceptable.
+- A publisher key is not a client credential and would require an eligible publisher relationship plus a secure server. No such access is assumed.
+- A user-provided personal user key might be technically possible, but Valve's reviewed docs do not explain a third-party desktop app collecting/using an end user's key, and the domain/application registration requirement remains. Do not treat this as approved or user-friendly without confirmation.
+- A GameVault-operated backend could keep a GameVault Web API key confidential, but adds hosting, privacy-policy, storage-country, security, deletion, availability, and operating-cost obligations. The owner has not approved a backend.
+- OpenID verifies identity; it does not exchange for a documented general-purpose API token or override Steam privacy settings.
+
+## Data-by-data assessment
+
+| Desired data | Documented method/source | Requirements and limitations | Assessment for the proposed standalone app |
 |---|---|---|---|
-| Public Steam Web API | Documented HTTP interfaces, but each method has its own parameters and restrictions | API key required by the Web API documentation generally; key and terms bind use to a registered application; privacy and method restrictions apply | Preferred source only if a compliant key/auth model is approved |
-| Steam OpenID | Verifies a SteamID through Steam's OpenID 2.0 provider without asking for a Steam password | Documented primarily for websites; a desktop callback design is not validated here; identity does not grant access to private owned games or achievements | Research further; no implementation yet |
-| Steamworks SDK | Game-facing integration (e.g. the current user's SteamID and game-specific functionality) | SDK/API is designed for apps/games integrating Steamworks. Steam documentation describes SDK distribution/use in a developer context; it is not established as a generic third-party library inventory SDK | Do not assume it gives GameVault a player's entire library |
-| Steam Community pages/interfaces | Some publicly viewable community information | A page being publicly reachable does not make its interface a supported API; scraping is fragile and policy-sensitive | Do not scrape |
-| Local Steam installation, library folders, app manifests | Potential clues about installed local games, not authoritative ownership of a full account library | Local implementation detail; can be stale, incomplete, per-machine and altered. No support/stability or terms review completed. Reading user files requires explicit scope and careful path/permission handling | Excluded by current master prompt; reconsider only through a separate documented decision |
-| Third-party libraries/services | May wrap Steam protocols or expose convenience methods | Must audit provenance, protocol stability, license, credential handling, account/security risk, and terms | No speculative dependency or integration |
+| SteamID identity | Steam OpenID 2.0 through `https://steamcommunity.com/openid/` | Valve's docs describe a user beginning on a third-party website, signing in on Steam Community, and being redirected to the website's `return` URL with OpenID data. No password is given to GameVault. No native desktop callback/loopback scheme is documented in the material reviewed. | **Conditionally viable** via an approved website/backend design; not verified for a pure desktop app. |
+| Public profile summary | `ISteamUser/GetPlayerSummaries` | Requires a user Web API key and SteamID. Valve says this call should be used when a website needs to display user information; it cautions game clients to use client APIs for their own user context. Returned fields reflect profile visibility. | **Conditionally viable** only after confirming the GameVault key and desktop/web deployment model. Do not imply private data access. |
+| Owned games | `IPlayerService/GetOwnedGames` | Requires a user Web API key and SteamID. Valve says games are returned only if the player's owned games/game details are visible. Optional parameters include game info and played free games. | **Conditionally viable** with visible Game Details and a compliant key path; current local-only distribution does not have one. |
+| Recently played and playtime | `IPlayerService/GetRecentlyPlayedGames`, `GetSingleGamePlaytime` | Both list a user key. The single-game call says the Web API key must be associated with the AppID for results. Availability and privacy behavior must be verified per endpoint. | **Conditionally viable** after key/access review. Treat absent results as unknown, not zero. |
+| Earned achievement state | `ISteamUserStats/GetPlayerAchievements` | Requires a user key, SteamID, AppID. It returns unlocked achievements. The method page does not completely specify all profile visibility/failure cases. | **Conditionally viable** for read-only display after account-data access and per-game behavior are confirmed. |
+| Achievement definitions/schema | `ISteamUserStats/GetSchemaForGame` | Requires a user Web API key and AppID; describes that game's published stats/achievement schema. No universal availability guarantee is documented. | **Conditionally viable**; only show schema/data actually returned. |
+| Public store catalog names/basic data | `IStoreService/GetAppList` | Valve describes this service as public store information; its method page lists “any Web API key,” requires pagination for the full catalog, and exposes timestamps. The older `ISteamApps/GetAppList` is marked deprecated. Host/key pairing and the intended use for this desktop product still need confirmation. | **Partly viable** for store catalog lookup after confirming registration/terms. It does not establish ownership or installed state. |
+| Full store descriptions, artwork, prices, other metadata | Store-facing methods and client/community surfaces vary | The reviewed docs do not establish one complete, unrestricted desktop API for all desired detail or grant blanket redistribution/caching rights for game artwork. | **Unresolved**. Use no packaged Steam/game art; verify each field and asset right before display/cache. |
+| Installed games and Steam library folders | Local Steam client configuration/manifests or client behavior | No documented Web API method for a user's installed-game list or library paths was found in the reviewed Valve reference. Steam-local files are implementation details and may be stale, changed, or incomplete; their compatibility/terms were not established. | **Out of scope** under `MASTER_PROMPT.md`. Do not read these files or reverse engineer the client in this project task. A future explicit opt-in import requires a separate policy, threat, and supportability decision. |
 
-## Relevant documented interfaces
+### Public endpoints vs. keys
 
-### Owned games and playtime
+Some public Web API methods may be callable without a key, according to Valve's authentication documentation. That does not include the player-specific methods above that explicitly require a user key. Public app catalog data is not a substitute for account ownership, playtime, or achievement state. Do not infer access from a browser page being publicly visible.
 
-Valve documents `IPlayerService/GetOwnedGames`. It requires a user Web API key and SteamID, with flags such as `include_appinfo` and `include_played_free_games`. The method returns owned games only if the player's owned games/game details are visible. `GetRecentlyPlayedGames` and `GetSingleGamePlaytime` are also documented; the latter notes the key must be associated with the AppID for results. These are real documented interfaces, but that does not establish that embedding a shared key in GameVault's client is permitted or safe.
+## Authentication decision
 
-Primary reference: [IPlayerService](https://partner.steamgames.com/doc/webapi/IPlayerService).
+Steam's OpenID docs explicitly describe a browser-based website relying party. They do not document `localhost`, a custom URI scheme, or a native desktop application's return/callback registration. A web callback hosted on a GameVault-controlled domain may be a design to investigate, but it would create an online service, and identity alone does not make private player data available. Never collect a Steam password, cookie, Steam Guard code, or session token.
 
-### Profile information
+**No supported authentication flow for a standalone, local-only GameVault has been verified.** Before implementation, obtain current Valve confirmation or authoritative documentation for one of:
 
-`ISteamUser/GetPlayerSummaries` accepts SteamIDs and a user Web API key. Valve says it should be used when a website needs to display user information, and recommends client APIs if a game client needs that information. Do not interpret this as blanket approval for a third-party desktop application; verify terms and the app's exact use.
+1. A GameVault-operated website/backend that registers the application/domain, validates OpenID, keeps an API key server-side, and serves user-requested data under a published privacy and retention policy; or
+2. A user-owned key flow, if Valve confirms that the app may accept/store the key and how each user registers it to the required domain/application; or
+3. A narrowed product that drops account-connected data and redefines v1 (requires owner approval and new scope).
 
-Primary reference: [ISteamUser](https://partner.steamgames.com/doc/webapi/ISteamUser).
+Do not add a backend or ask users for API keys on assumption alone.
 
-### Achievements
+## Privacy, rate limits, caching, and data integrity
 
-`ISteamUserStats/GetPlayerAchievements` documents retrieval of a user's unlocked achievements by SteamID and AppID using a user Web API key. `GetSchemaForGame` documents game achievement/stat schema lookup, also using a key. Data can be absent or unavailable for private profiles or games without usable published schema; test those cases only with controlled mock data. The docs do not provide a universal, keyless, local desktop achievement feed.
+- The Web API Terms currently cap use at 100,000 calls/day per the Terms page; no endpoint-specific limits were found. Use a much smaller budget, explicit user refresh, bounded concurrency, timeout, and retry/backoff only after access is approved. Never evade throttling.
+- The Terms require a privacy policy for nonpublic end-user data, retrieval at the user's request, disclosure of data stored and countries where it is stored, and “as is” treatment. A desktop app storing locally still needs a reviewed policy/terms interpretation before it queries nonpublic user data.
+- The policy page currently shows a July 2010 revision date; verify current text with Valve before relying on it.
+- Persist `fetched_at` and source/provenance separately from game event timestamps. Represent private, not returned, unsupported, and stale values distinctly from zero/locked.
+- Make cache duration and artwork handling dependent on verified API/asset terms; no durations or redistribution rights are assumed here.
+- Validate response shape and bounds. Handle private profiles, missing game schemas, key errors, invalid SteamIDs, timeouts, offline operation, HTTP errors, and changed fields without dropping local annotations.
 
-Primary reference: [ISteamUserStats](https://partner.steamgames.com/doc/webapi/ISteamUserStats).
+## Steamworks SDK and client integration
 
-### Steamworks SDK distinction
+Valve describes Steamworks SDK/API as a set of game/app integration features. The documented C++ `ISteamUserStats` methods operate in a game's Steam context; they are not a generic remote catalog of a user's entire account library. The SDK API is distinct from Web API methods and from direct access to Steam client internals.
 
-Valve describes the Steamworks API as providing features to an application/game integrating Steam, including achievements, stats, overlay, and user identity. The API overview says the SDK officially supports C++ and describes initialization through the Steam client context. This is distinct from a generic account-library API. Do not claim broad library access through the SDK or ship its redistributables until the actual license, distribution rules, use case, and eligibility are reviewed.
+The proposed React/Tauri companion is not itself a Steam game. Do not assume that using the SDK grants library access or that Steam partner/publisher access exists. Do not directly load `steamclient.dll`, inspect process memory, use undocumented client interfaces, scrape Community pages, or bypass a profile's privacy choice.
 
-Primary references: [Steamworks SDK](https://partner.steamgames.com/doc/sdk) and [Steamworks API Overview](https://partner.steamgames.com/doc/sdk/api).
+## Recommendations
 
-## Authentication and secret constraints
+- **SteamID sign-in:** conditional; website flow documented, native desktop callback not verified.
+- **Public profile, owned games, playtime, achievements:** conditional on a documented key strategy and Steam privacy settings. Not ready in current local-only design.
+- **Public store catalog:** potentially usable for basic catalog lookup, but verify registered key and endpoint host against current docs/terms before using.
+- **Installed game/library paths:** out of scope; no verified documented remote source and local-file parsing is excluded by current project scope.
+- **Game images and detailed metadata:** unresolved until source rights, endpoint and cache/distribution permissions are verified.
+- **Achievement mutation:** out of scope. No unlock, clear, reset, stat edit, automation, or SAM behavior.
 
-- Steam Web API docs say API calls require a key and identify Steam OpenID as a way to authenticate a SteamID without the user entering a Steam password into a third-party site: [Steam Community developer docs](https://steamcommunity.com/dev).
-- Steam Web API Terms state that the API is for retrieving data to present in the registrant's application, requires a privacy policy for nonpublic user data, says data is retrieved as requested by the end user, requires disclosure of stored data/countries, and requires keeping the API key confidential. The terms currently show a July 2010 update date and a 100,000 calls/day cap; validate current terms before reliance: [Steam Web API Terms](https://steamcommunity.com/dev/apiterms).
-- Valve's Web API overview distinguishes public methods from protected methods intended for trusted backend applications and says many methods have key restrictions: [Web API Overview](https://partner.steamgames.com/doc/webapi_overview).
-- Valve's authentication/ownership guide documents OpenID for linking a SteamID and describes some ownership checks as secure-server calls: [User Authentication and Ownership](https://partner.steamgames.com/doc/features/auth).
+## Primary sources reviewed
 
-**Design consequence:** do not ship a shared private key in a desktop binary, frontend bundle, source repository, or example config. A server-side proxy would create new data-controller, privacy, hosting, security, and operating cost obligations and needs explicit product approval. A user-supplied personal API key is also not approved as a solution: its terms, onboarding burden, client exposure, and per-user registration implications need review.
-
-## Data-by-data feasibility snapshot
-
-| Desired data | Documented route | Current status |
-|---|---|---|
-| SteamID identity | Steam OpenID 2.0; Web API lookup methods also exist | Website flow documented; desktop redirect/callback remains unverified |
-| Owned games | `IPlayerService/GetOwnedGames` | Documented; needs key and visible game details; key distribution blocks local-only client pending a compliant strategy |
-| Game name/icon in response | `include_appinfo` option on GetOwnedGames | Documented fields; licensing/caching/asset-use terms need separate review |
-| Recently played / playtime | `GetRecentlyPlayedGames`, `GetSingleGamePlaytime` | Documented; privacy/key constraints; one method notes app-associated key; evaluate exact access |
-| Achievement state | `GetPlayerAchievements` | Documented read endpoint with key; availability per profile/game needs empirical mock/authorized verification |
-| Achievement definitions | `GetSchemaForGame` | Documented with key; availability depends on app's published schema |
-| Installed state/library location | Local files or client behavior | Not established by the cited Web API; excluded unless a separate local import review is approved |
-| Unlock/reset achievements | Publisher/game functions may write stats; not required for read-only goal | Explicitly out of scope; no writes or SAM behavior |
-
-## Rate limits, privacy, resilience
-
-Terms list a global API call cap but not a per-method operational budget. Design conservative user-triggered refresh, bounded concurrency, caching, timeouts, and backoff only if and when access is approved. Do not evade throttling or privacy restrictions. A private profile, hidden game details, absent achievement schema, revoked access, invalid key, or missing API response must be represented as unavailable, never as zero games or zero achievements.
-
-## Open questions before implementation
-
-1. Can a GameVault standalone desktop application obtain a key tied to its registration, and what exact distribution model does Valve permit?
-2. Is there a documented/current authorization method fit for a pure desktop app, beyond the website-oriented OpenID description?
-3. Is a backend acceptable, and who operates it, publishes its privacy policy, stores what data, and handles deletion/security requests?
-4. What Steam data and game imagery may be cached locally and for how long?
-5. Are any local Steam files necessary for the product? If yes, define a separately opt-in, read-only scope and verify applicable terms.
-6. Confirm current rates, profile privacy behavior, and terms immediately before implementation.
+- Steam Web API authentication/key types: https://partner.steamgames.com/doc/webapi_overview/auth
+- Steam Web API overview (public vs protected methods; HTTPS; host notes): https://partner.steamgames.com/doc/webapi_overview
+- Steam Web API Terms (confidentiality, privacy, user request, storage-country, call cap): https://steamcommunity.com/dev/apiterms
+- Steam Community API and OpenID developer page: https://steamcommunity.com/dev
+- Steam OpenID / authentication and ownership (website redirect flow): https://partner.steamgames.com/doc/features/auth
+- `IPlayerService`: https://partner.steamgames.com/doc/webapi/IPlayerService
+- `ISteamUser`: https://partner.steamgames.com/doc/webapi/ISteamUser
+- `ISteamUserStats`: https://partner.steamgames.com/doc/webapi/ISteamUserStats
+- `IStoreService`: https://partner.steamgames.com/doc/webapi/IStoreService
+- `ISteamApps` (deprecated `GetAppList`): https://partner.steamgames.com/doc/webapi/ISteamApps
+- Steamworks SDK/API overview: https://partner.steamgames.com/doc/sdk and https://partner.steamgames.com/doc/sdk/api
+- Steam branding guidance: https://partner.steamgames.com/doc/marketing/branding

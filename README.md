@@ -6,7 +6,7 @@ GameVault is planned as a Windows desktop companion for understanding and organi
 
 ## Current status
 
-The repository contains the product brief, this research and planning documentation, and Git setup. Steam integration and licensing decisions remain gated. The current recommendation is **CONDITIONAL GO for foundation work only**; Steam account connection and any achievement-writing behavior are not approved.
+The repository contains the product brief, feasibility research, and planning documentation. The current recommendation is **CONDITIONAL GO for planning only**. Steam account connection is blocked on a confirmed API-key/authentication and privacy model; no backend has been approved. SAM/ASF reuse is not approved, achievement-writing behavior is out of scope, and the project license remains an owner decision.
 
 ## Intended technology direction
 
@@ -15,7 +15,7 @@ The repository contains the product brief, this research and planning documentat
 - Rust application services
 - SQLite local persistence
 
-Versions and libraries will be selected after the architecture and security review. See [Architecture](docs/ARCHITECTURE.md) and [Development](docs/DEVELOPMENT.md).
+Versions and libraries will be selected after the architecture and security review. The Windows prerequisite tools are present, but no scaffold build has been run. See [Architecture](docs/ARCHITECTURE.md) and [Development](docs/DEVELOPMENT.md).
 
 ## Scope
 

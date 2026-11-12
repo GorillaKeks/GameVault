@@ -47,7 +47,7 @@ docs/                         decisions, research, security and user docs
 - **Storage:** SQLite behind Rust repository methods. Use schema migrations, parameterized statements, transactions, stable identifiers, and backup/restore verification. Store a minimal cache and distinguish remote facts from local user annotations.
 - **Logging:** structured and useful for diagnosis, but redact account identifiers where unnecessary and never log API keys, credentials, tokens, cookies, or full profile payloads.
 
-Tauri capabilities grant permissions to frontend windows/webviews; narrow them to the main window and required operations. Commands registered in Rust and plugin permissions still need deliberate review. Capabilities do not make unsafe Rust code safe. See Tauri's [capability model](https://v2.tauri.app/security/capabilities/).
+Tauri capabilities grant permissions to frontend windows/webviews; narrow them to the main window and required operations. Use typed command inputs/outputs and restrict which windows can invoke commands where supported. Do not expose arbitrary SQL, HTTP, shell, or filesystem commands. Capabilities do not make unsafe Rust code safe. See Tauri's [capability model](https://v2.tauri.app/security/capabilities/).
 
 ## Data model sketch (not approved schema)
 
@@ -65,33 +65,40 @@ This is a discussion model, not an implementation decision. Do not treat missing
 
 ## Integration and auth design
 
-Current research shows Steam's public Web API uses a key, while the API terms require the key be confidential and tie use to the application identified at key signup. Some interfaces are explicitly intended for trusted backend use. A key cannot be embedded in the distributed desktop binary. Do not add a proxy/backend without a separately approved privacy, hosting, cost, and operational design. See [Steam integration research](STEAM_INTEGRATION.md).
+Steam's API uses method-specific access: some public methods require no key, while the player-data methods relevant to GameVault require a user Web API key. User-key registration requires an associated domain; publisher keys require a Steamworks publisher group and must remain on a secure server. Steam OpenID is documented as a browser-based website flow, not a validated native desktop callback. The GameVault key, privacy, backend, and auth choices remain open. A distributed binary must not contain a shared key. Do not add a proxy/backend or collect user keys without owner approval and a confirmed Valve-compliant design. See [Steam integration research](STEAM_INTEGRATION.md).
 
 Steam OpenID is documented for third-party websites to authenticate a SteamID without collecting a password. A browser-based desktop redirect/callback architecture for this local-only app has not been validated. OpenID identity alone does not guarantee access to private game details or achievements. Do not implement until Valve documentation and the terms are checked against the exact design.
 
 ## Database and migration strategy
 
 - Keep SQLite access in Rust, not in arbitrary UI queries.
-- Use a maintained library selected after checking license, Windows support, async/runtime fit, and security posture.
+- **Recommendation:** use a Rust-owned repository layer with a SQLite-capable Rust library and embedded, ordered migrations. Do not let the React UI issue SQL through a general-purpose command.
+- `sqlx` is a candidate: its current [documentation](https://docs.rs/sqlx/latest/sqlx/) describes SQLite support, async operation, embedded migration macros and MIT/Apache-2.0 licensing. Check the exact stable release, MSRV, Tauri runtime compatibility, Windows build behavior, and feature set before selecting it. A simpler synchronous library remains an alternative if it better fits the eventual command workload.
+- Tauri's [SQL plugin](https://v2.tauri.app/plugin/sql/) supports SQLite and migrations, but exposes database operations to JavaScript. For GameVault, prefer Rust-owned storage and explicit domain commands; reconsider the plugin only if its frontend permission model can be kept equally narrow and there is a concrete reason to use it.
 - Store the database in Tauri's per-app data directory, not beside the executable or in the repository.
 - Use ordered migrations, transactions, integrity checks, and tests from both empty and prior versions.
+- Use parameter binding, short transactions, bounded writes, and a backup-tested journal mode. No journal mode or schema is selected yet.
 - Before any destructive migration, create and verify a backup. Never silently discard cached/user-authored data.
 - No schema is created in this planning phase.
 
 ## Errors, diagnostics, and update model
 
-Map errors into stable user-facing categories: private/unavailable data, offline, throttled, invalid response, local storage failure, and configuration/auth failure. Preserve diagnostic context without exposing secrets. Add timeouts and bounded retries only for retryable operations; honor API throttling.
+Map errors into stable user-facing categories: private/unavailable data, offline, throttled, invalid response, local storage failure, and configuration/auth failure. Preserve diagnostic context without exposing secrets. If Steam access is approved, make network calls in Rust, not from the WebView; use HTTPS with normal certificate validation, finite connect/overall timeouts, bounded response sizes, cancellation, and bounded retry/backoff only for retryable operations. Honor Steam throttling and user refresh intent.
+
+Track fetch time and source provenance; do not treat missing/private fields as zero or a locked achievement. Refresh should be explicit and bounded. Do not persist more profile/library data or artwork than the approved feature and current terms require. Cache durations and artwork retention remain unresolved until source terms are reviewed.
 
 Automatic updates are not a foundation requirement. If adopted later, use signed artifacts and protect the private signing key; Tauri's updater requires signatures and recommends private-key secrecy ([updater docs](https://v2.tauri.app/plugin/updater/)). Decide release hosting, signing, rollback, and update consent before enabling it.
 
 ## Packaging and deployment
 
-Target Windows x64 first. Tauri's current prerequisites include the MSVC C++ Build Tools, WebView2, Rust MSVC toolchain, and Node for a JS frontend; verify the local machine before setup ([Tauri Windows prerequisites](https://v2.tauri.app/start/prerequisites/)). Choose NSIS or MSI only after installer/update requirements are clear. No package format, code-signing certificate, or updater endpoint has been selected.
+Target Windows x64 first. Current machine inspection found Visual Studio Build Tools 2022 (17.14.37806.7) and Build Tools 2026 (18.11.12324.101) with x64 MSVC compilers, Windows SDK headers at 10.0.22621.0, and WebView2 runtime 157.0.4341.46. Rust MSVC and Tauri CLI are installed; none of these findings constitutes a successful Tauri build. Tauri's current [Windows prerequisites](https://v2.tauri.app/start/prerequisites/) include MSVC C++ tools, WebView2, Rust MSVC, and Node for a JS frontend.
+
+Choose NSIS or MSI only after installer/update requirements are clear. Sign public Windows releases where feasible. Automatic updates are optional; if selected, use signed update artifacts, protect the private signing key, and document rollback/recovery. Do not enable an updater until release hosting, signing-key custody, and update-consent behavior are decided.
 
 ## Architecture decisions still open
 
-1. Steam data access/authentication strategy and API key ownership.
+1. Steam data access/authentication strategy, domain registration, key ownership, and whether an owner-approved backend is acceptable.
 2. Whether any local Steam-file import is in scope; current master brief excludes scraping and it must not be added by assumption.
-3. Rust SQLite library and migration mechanism.
+3. Exact Rust SQLite library and migration mechanism (`sqlx` is only a candidate).
 4. Project license, third-party asset strategy, and application name clearance.
 5. Installer, update, signing, and support strategy.
