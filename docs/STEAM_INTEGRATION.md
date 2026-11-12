@@ -90,3 +90,17 @@ The proposed React/Tauri companion is not itself a Steam game. Do not assume tha
 - `ISteamApps` (deprecated `GetAppList`): https://partner.steamgames.com/doc/webapi/ISteamApps
 - Steamworks SDK/API overview: https://partner.steamgames.com/doc/sdk and https://partner.steamgames.com/doc/sdk/api
 - Steam branding guidance: https://partner.steamgames.com/doc/marketing/branding
+
+## Phase 1.5 revalidation addendum (2026-11-12)
+
+The current Valve documentation reconfirms the conditional assessment. The Steam Web API overview adds a material host/key ambiguity: it describes `api.steampowered.com` as the public host and says every call to `partner.steam-api.com` must contain a valid publisher key; the endpoint method references nevertheless show `partner.steam-api.com` URLs while documenting user keys for player methods. Do not copy a method URL into a client without resolving this inconsistency. Any approved user-key client path must use the host and method Valve confirms for that key type.
+
+The terms page still says **Last updated July 2010**, names an app in the key sign-up, says the key must stay confidential, requires retrieval at an end user's request, and requires a privacy policy naming stored Steam data and storage countries. This page permits the use of Steam Web API/data in an application under its terms, but does not settle every question about commercial desktop distribution, a backend proxy, end-user key collection, or domain registration on behalf of GameVault. These are questions for Valve and qualified counsel, not conclusions from this review.
+
+The requested data scope was expanded in [`FEASIBILITY_REVIEW.md`](FEASIBILITY_REVIEW.md): identity, profile, owned games, metadata, installation, library paths, playtime, achievements, progress, last played, artwork, categories and local configuration are separately evaluated. No local Steam files are read or approved. Achievement progress is not a universal data contract; app-published stats do not guarantee a comparable percentage. Artwork terms and retention remain unresolved.
+
+**OpenID implementation security note:** use a fixed Steam OP endpoint and maintained OpenID 2.0 relying-party library. Verify signature, required signed fields, discovery, exact `return_to`, and one-time nonce/replay protection before accepting the SteamID. Bind a one-time state value to the initiated user action, use TLS and short-lived/revocable GameVault sessions, redact callback parameters, and never accept a SteamID from an unverified callback. Valve's OpenID flow does not issue a general API token or grant access to private information.
+
+**Recommended path remains conditional:** website callback and backend key storage are the leading investigation candidate, not an approved build decision. The resulting service breaks the current no-cloud/local-first assumption and adds operations, cost, privacy, retention and availability obligations. If that is unacceptable or Valve cannot confirm the specific arrangement, account-connected v1 is blocked until the owner approves a reduced offline scope. No shared desktop key, user-key collection, or hybrid local file parsing is recommended.
+
+The official Web API overview, key authentication page, OpenID and ownership page, endpoint references, API terms and OpenID 2.0 validation spec were re-opened on 2026-11-12. See the full source list in [`FEASIBILITY_REVIEW.md`](FEASIBILITY_REVIEW.md).

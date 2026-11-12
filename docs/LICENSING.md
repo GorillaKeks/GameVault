@@ -9,6 +9,8 @@
 | **MIT** | Permissive; downstream users may reuse/modify/redistribute, including in proprietary products, while retaining copyright and permission notices. | Short and familiar. The text does not include the detailed contributor patent license found in Apache-2.0. |
 | **Apache-2.0** | Permissive commercial reuse and redistribution with preservation of license/copyright notices, marking modified files, and any applicable NOTICE; includes an express contributor patent license. | More detailed notice/compliance requirements. It does not grant trademark rights. |
 | **GPL-3.0-only** | Allows distribution and modification, but conveyed derivative/combined works are subject to GPLv3 source and same-license conditions, with applicable notices and corresponding-source obligations. | Strong copyleft may be a deliberate community goal, but affects how derivatives and dependencies can be combined/distributed. |
+| **MPL-2.0** | File-level copyleft for covered files and their modifications; a larger work may contain separately licensed files, subject to MPL notice/source obligations. | Middle ground between permissive and whole-work copyleft; requires file-level compliance tracking. |
+| **Proprietary** | Owner can reserve rights and restrict redistribution, subject to valid rights ownership and applicable law. | No open-source permission; requires owner-controlled license terms, contribution rights and distribution terms. |
 
 Primary license texts: [MIT](https://opensource.org/license/mit/), [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0.txt), and [GNU GPL-3.0](https://www.gnu.org/licenses/gpl-3.0.html). Review the exact text before adoption.
 
@@ -18,6 +20,8 @@ If the goal is an openly licensed desktop app that can be reused in both open an
 
 The owner must choose. This document does not grant permission to add a `LICENSE` file or license the project. Confirm intended commercial use, contribution model, and desired downstream freedoms before deciding.
 
+Phase 1.5 recommends Apache-2.0 only **if** the project owner wants open-source permissive reuse; MIT is simpler. A closed-source objective points to a proprietary license, not an Apache/MIT choice. This remains unselected pending owner confirmation. See [`decisions/ADR-005-application-licensing.md`](decisions/ADR-005-application-licensing.md); its status is Proposed.
+
 ## Third-party reuse and notices
 
 - Track exact source URL, revision/version, author, license text, notices, modifications, and distribution obligations for every code, package, font, icon, artwork, and generated asset.
@@ -25,6 +29,7 @@ The owner must choose. This document does not grant permission to add a `LICENSE
 - SAM is under zlib terms in its current upstream `LICENSE.txt`; its README also attributes icons to Fugue Icons. No SAM code or icon asset was copied. See [SAM/ASF audit](SAM_AUDIT.md).
 - ASF is under Apache-2.0, but it is not approved as a dependency. Its dependency and account-automation surface requires an independent review; Apache-2.0 does not make it fit GameVault or grant Steam-related permissions.
 - No Steamworks SDK, SAM, ASF, SteamKit2, game artwork, or Steam logo has been copied into this repository.
+- Tauri's upstream code uses MIT and/or Apache-2.0 by component, React is MIT, and SQLite core deliverable code is public domain. These do not establish the license of wrappers, optional SQLite components, build tools, dependencies, or artwork; inventory exact selected versions before distribution.
 
 ## Steam/Valve branding, data, and artwork
 

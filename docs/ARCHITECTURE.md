@@ -102,3 +102,13 @@ Choose NSIS or MSI only after installer/update requirements are clear. Sign publ
 3. Exact Rust SQLite library and migration mechanism (`sqlx` is only a candidate).
 4. Project license, third-party asset strategy, and application name clearance.
 5. Installer, update, signing, and support strategy.
+
+## Phase 1.5 review outcome (2026-11-12)
+
+The current recommendation remains **proposed only**: keep the Tauri 2 / React / TypeScript / Rust / SQLite baseline, use SQLite through Rust-owned repositories, and investigate a website OpenID + server-side API path only if the owner accepts hosting and Valve confirms the exact key/application/host arrangement. No backend, auth flow, SQL crate, schema, license, or implementation is approved by these recommendations. If a backend is declined, the owner must explicitly narrow v1 before scaffolding.
+
+See [`FEASIBILITY_REVIEW.md`](FEASIBILITY_REVIEW.md) and [`decisions/`](decisions/) for the four-option API architecture matrix, data capability/privacy matrix, alternatives and six Proposed ADRs. Steam's Web API overview says every call to `partner.steam-api.com` requires a publisher key, while method references show partner-host examples for methods listing a user key. The public-host/user-key arrangement must be confirmed rather than inferred.
+
+## Build readiness
+
+Windows prerequisite executables and runtime were found, but no Tauri app build has been performed. The current Node 24.22.1 installation is behind the 24.22.3 security release published 2026-11-11. SQLite CLI is absent but not required for an embedded library; no Rust SQLite dependency has been selected. Treat environment as **prerequisites mostly present; compilation unverified**. See [`DEVELOPMENT.md`](DEVELOPMENT.md).

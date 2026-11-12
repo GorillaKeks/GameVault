@@ -39,6 +39,8 @@ If reconsidered, first inventory every proposed source file, transitive dependen
 
 - ASF's README describes a C# application primarily for farming Steam trading cards across multiple accounts. It also advertises Steam authentication/Steam Guard support, account actions, plugins, and operation without the official Steam client; it cites SteamKit2 as a central dependency.
 - Current project files show a console executable with a web API/UI integration and a plugin architecture. The main project has dependencies including SteamKit2, ASP.NET OpenAPI, JSON Web Tokens, NLog, Scalar, cryptography and composition packages. `Directory.Packages.props` at review time pins SteamKit2 `4.0.0-beta.2`; this version is only a source snapshot, not a dependency recommendation.
+- ASF documents an officially maintained HTTP/JSON IPC API for a running ASF process, including status reads and powerful operations such as sending commands and editing/adding/deleting bot configuration. It binds to localhost by default; the documented default `IPCPassword` is null, meaning API calls need no password unless the operator configures one. Remote binding requires explicit network/security configuration. This API is for administering ASF itself; it is not a supported substitute for Steam's user Web API or a read-only GameVault data source.
+- Consequently, embedding/launching ASF or connecting to its IPC would bring a second long-running service, account/bot configuration, a powerful local control API, and a separate auth/patch boundary into the desktop app. Restricting it to localhost alone would not make the administrative API fit GameVault's least-privilege product boundary.
 - ASF is a large C#/.NET operational application with multi-account, service and plugin concerns. It is not a small read-only library suitable for linking into GameVault's Rust/Tauri process.
 - Its SteamKit2 protocol/library usage is not evidence that the corresponding operations are officially supported for a third-party Steam companion. No SteamKit2 or ASF behavior was executed or tested.
 
@@ -57,6 +59,14 @@ If reconsidered, first inventory every proposed source file, transitive dependen
 - No code or assets from ASF or SAM are present in GameVault.
 - Remaining before any reuse: full dependency/asset inventory for the exact files proposed, a fuller source audit, current Steam policy review, license compatibility review, and explicit owner approval.
 
+## Phase 1.5 completion decision (bounded review)
+
+The specific question for this phase is whether SAM or ASF should become a GameVault dependency or supply v1 behavior. The recommendation for **both** is **research reference only; excluded from v1**. Neither is a dependency, and no files/assets were copied. SAM's direct Steam client DLL/interface coupling, local schema dependency and achievement/stat mutation conflict with GameVault's read-only documented-API boundary. ASF's multi-account automation, SteamKit2 protocol surface, credentials/Steam Guard, service/plugin architecture and broad dependency graph do not fit a read-only Rust/Tauri companion.
+
+This does not certify either project as legally or technically safe to reuse. The review was a bounded reading of the listed files/repository metadata, not an exhaustive transitive dependency, binary, security or policy audit. SAM's icon credits need a separate asset license review. ASF's full dependency and bundled asset notices need review if an exact component is ever proposed. No definitive claim is made about Valve's policy treatment of all SAM/ASF use cases.
+
+Reviewed upstream heads rechecked 2026-11-12: SAM `de8b71048a0cee3c3e97cd8535e0f55ca86513e4`; ASF `9d34daacea8ab785ca22af4685daa76e29fdf9c9`. Any future review must pin exact commit/file provenance rather than rely on moving branch names. No implementation is authorized by this audit.
+
 ## Sources
 
 - SAM repository: https://github.com/gibbed/SteamAchievementManager
@@ -71,4 +81,5 @@ If reconsidered, first inventory every proposed source file, transitive dependen
 - ASF license: https://github.com/JustArchiNET/ArchiSteamFarm/blob/main/LICENSE.txt
 - ASF reviewed revision: https://github.com/JustArchiNET/ArchiSteamFarm/commit/9d34daacea8ab785ca22af4685daa76e29fdf9c9
 - ASF project dependencies: https://github.com/JustArchiNET/ArchiSteamFarm/blob/main/ArchiSteamFarm/ArchiSteamFarm.csproj and https://github.com/JustArchiNET/ArchiSteamFarm/blob/main/Directory.Packages.props
+- ASF IPC API and authentication defaults: https://github.com/JustArchiNET/ArchiSteamFarm/wiki/IPC
 - Steam Web API Terms: https://steamcommunity.com/dev/apiterms

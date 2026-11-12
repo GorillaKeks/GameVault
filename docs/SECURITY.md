@@ -60,3 +60,13 @@ No telemetry, analytics, account service, or network data sharing is approved by
 | Compromised update | Signed update artifacts, protected key, release verification and recovery plan |
 
 No security tests have been run because no application exists.
+
+## Phase 1.5 additions (2026-11-12)
+
+Steam OpenID proves a Steam identity only after a relying party validates the assertion; it is not API authorization. Any future website flow must use a fixed Steam OP endpoint, a maintained library, exact `return_to` and discovery/signature checks, nonce replay defense, TLS and a one-time state tied to the initiated session. Never trust a callback SteamID before validation. If the desktop receives a GameVault session, keep it short-lived/revocable and do not place it in URLs, logs or crash output.
+
+No Steam Web API key may be embedded in the executable, frontend, source or release artifact. A backend-held key is only a candidate if Valve confirms the registration/application/host design and the owner approves hosted operations. If there is no approved secret boundary, disable player-data calls. Do not ask users for personal keys or parse Steam client files on assumption.
+
+Privacy states must distinguish `private/unavailable`, `unsupported`, `missing`, `stale`, `error`, and numeric zero. Private data, network failure, absent schema and missing installation must not be rendered as empty ownership, zero playtime, all achievements locked or “not installed.” Preserve the last permitted cache with provenance/timestamp and redacted diagnostics.
+
+The detailed threat and degradation assessment is in [`FEASIBILITY_REVIEW.md`](FEASIBILITY_REVIEW.md). These are proposed controls, not tested properties.

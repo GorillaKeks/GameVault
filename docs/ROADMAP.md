@@ -10,22 +10,25 @@
 - Initialized local Git on `main`, added `origin`, created `.gitignore`, committed the prompt, and pushed. Commit: `f34f0ea3f628967afad8bcfaeaba3d062405bd13`.
 - Added and expanded architecture, Steam access, security, licensing, ASF/SAM, roadmap, and development research docs.
 - Rechecked Steam endpoint/key distinctions, the likely desktop auth gap, SAM mutation behavior, ASF fit, and local Windows prerequisites against primary sources/current repository files.
+- Completed Phase 1.5 feasibility review, architecture alternatives, expanded data/privacy matrix, six Proposed ADRs, bounded ASF/SAM decision, and read-only Windows toolchain diagnostics. See [`FEASIBILITY_REVIEW.md`](FEASIBILITY_REVIEW.md).
 
 **Still open before implementation:**
 
 - Owner decision: approve a GameVault website/backend that keeps a registered Web API key confidential, confirm a Valve-compliant per-user key model, or narrow v1 to remove account-connected data.
 - Resolve the native desktop authentication flow; Steam OpenID documentation reviewed describes a web-site redirect, not a validated native callback.
+- Obtain authoritative Valve clarification on user-key use for GameVault, app/domain registration, commercial desktop use and the discrepancy between player-method partner-host examples and the overview's publisher-key-only partner host.
+- Owner decision on whether a hosted GameVault website/backend is acceptable. If not, explicitly re-scope v1 to remove account-connected data before app scaffolding.
 - Do not parse local Steam client files. Reopen that scope only if the owner explicitly approves a separately reviewed import.
-- Full SAM dependency/asset and policy audit remains incomplete; the focused source review finds direct loading of `steamclient.dll` and achievement/stat writes. No reuse is approved.
+- SAM/ASF bounded feasibility decision is complete: both research reference only and excluded from v1. Full exact-file/dependency/asset/policy audit remains necessary before any proposed reuse; no reuse is approved.
 - Select GameVault's own license and check product-name/brand rights before distribution.
 - Check actual Tauri build/runtime compatibility after the owner authorizes a scaffold; the installed tools have not been tested in an app build.
 
 ## Phase 1 — Product and technical foundation
 
 1. Decide product requirements and acceptable data sources based on the documented Steam API gate.
-2. Windows prerequisites are present; update Node 24.22.1 to a current patch and verify a Tauri build after scaffold authorization.
+2. Windows prerequisites are mostly present; update Node 24.22.1 to 24.22.3 or newer supported LTS (24.22.3 was a security release on 2026-11-11) and verify a Tauri build after scaffold authorization.
 3. Select and record specific Tauri/React/TypeScript/Rust/SQLite versions and dependencies with license and maintenance checks.
-4. Approve architecture decisions, data inventory, threat model, license, and packaging direction.
+4. Approve Proposed ADRs, data inventory, threat model, license, and packaging direction.
 5. Only then scaffold an empty app shell with quality checks; no feature implementation before gates pass.
 
 ## Phase 2 — Local shell and persistence
@@ -56,5 +59,5 @@
 
 - No phase is complete until its decisions and evidence are documented.
 - No tests or compatibility results may be claimed without running them.
-- The current assessment is **CONDITIONAL GO for planning only**. Account-connected Steam features and SAM-derived behavior are not ready for implementation.
+- The Phase 1.5 assessment is **CONDITIONAL GO for planning only**. Account-connected Steam features and SAM/ASF behavior are not ready for implementation. All six ADRs are Proposed.
 - Do not start implementation automatically after a GO assessment; follow the authorization rule in `MASTER_PROMPT.md`.
