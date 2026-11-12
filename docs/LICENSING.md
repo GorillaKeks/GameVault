@@ -1,6 +1,6 @@
 # Licensing, Attribution, and Branding
 
-**Status:** no license chosen; no third-party runtime dependencies adopted. **Research date:** 2026-11-12. This comparison is informational, not legal advice.
+**Status:** the owner requires free and open-source software; the exact license is unselected. No third-party runtime dependencies have been adopted. **Research date:** 2026-11-12. This comparison is informational, not legal advice.
 
 ## Practical project-license options
 
@@ -16,11 +16,11 @@ Primary license texts: [MIT](https://opensource.org/license/mit/), [Apache-2.0](
 
 ### Recommendation (not a decision)
 
-If the goal is an openly licensed desktop app that can be reused in both open and proprietary downstream software, **Apache-2.0 is a reasonable default recommendation** because it is permissive and contains an express patent grant. MIT is a simpler alternative if minimal conditions matter more. GPL-3.0-only is appropriate if the owner deliberately wants reciprocal copyleft for distributed derivatives.
+Given the confirmed free/open-source requirement, **Apache-2.0 is recommended** for permissive commercial reuse and its express contributor patent grant. MIT is simpler if minimal conditions matter more. GPL-3.0-only or MPL-2.0 is preferable only if the owner wants stronger reciprocal obligations for derivatives.
 
-The owner must choose. This document does not grant permission to add a `LICENSE` file or license the project. Confirm intended commercial use, contribution model, and desired downstream freedoms before deciding.
+The exact license text and copyright holder still require explicit owner approval. This document does not grant permission to add a root `LICENSE` file. See [`OPEN_SOURCE_LICENSE_RECOMMENDATION.md`](OPEN_SOURCE_LICENSE_RECOMMENDATION.md) and the [non-operative proposed candidate marker](license-candidate/LICENSE-APACHE-2.0.proposed.txt).
 
-Phase 1.5 recommends Apache-2.0 only **if** the project owner wants open-source permissive reuse; MIT is simpler. A closed-source objective points to a proprietary license, not an Apache/MIT choice. This remains unselected pending owner confirmation. See [`decisions/ADR-005-application-licensing.md`](decisions/ADR-005-application-licensing.md); its status is Proposed.
+The project is required to remain free and open source; a proprietary license is no longer under consideration. The specific Apache-2.0 choice remains Proposed. See [`decisions/ADR-005-application-licensing.md`](decisions/ADR-005-application-licensing.md).
 
 ## Third-party reuse and notices
 

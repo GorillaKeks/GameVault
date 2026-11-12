@@ -1,11 +1,11 @@
 # ADR-003: Local Data Storage
 
-**Status:** Proposed
+**Status:** Accepted (owner-confirmed SQLite/local-only choice)
 **Date:** 2026-11-12
 
 ## Context
 
-The product brief proposes a local-first Windows app. No application schema, library, cache or preferences exist. Data sources and retention remain gated by Steam API and privacy review.
+The owner explicitly confirmed a local-first Windows app with SQLite and no GameVault server. No application schema, library, cache or preferences exist. Data sources and retention remain gated by Steam API and privacy review.
 
 ## Problem
 
@@ -20,7 +20,7 @@ Where should approved local preferences and any permitted cached Steam responses
 
 ## Decision
 
-**Recommendation:** use SQLite in per-user application data, accessed only through a Rust-owned repository with parameterized statements, explicit DTOs, ordered migrations and tested backup/restore. Store only owner-approved local preferences and minimum API cache, with source and fetch time; no production DB/schema is authorized in this phase. Select an exact Rust crate/bundling strategy during scaffold planning after license, MSRV and Windows build review.
+Use SQLite in per-user application data, accessed only through a Rust-owned repository with parameterized statements, explicit DTOs, ordered migrations and tested backup/restore. Store only approved local preferences and minimal source-labelled cache, with source and fetch time; no production DB/schema is authorized in this phase. The owner has approved the database choice and local location; exact Rust crate/bundling strategy remains open until scaffold planning and license/MSRV/Windows build review.
 
 ## Consequences
 

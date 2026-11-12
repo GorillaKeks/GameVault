@@ -65,9 +65,9 @@ This is a discussion model, not an implementation decision. Do not treat missing
 
 ## Integration and auth design
 
-Steam's API uses method-specific access: some public methods require no key, while the player-data methods relevant to GameVault require a user Web API key. User-key registration requires an associated domain; publisher keys require a Steamworks publisher group and must remain on a secure server. Steam OpenID is documented as a browser-based website flow, not a validated native desktop callback. The GameVault key, privacy, backend, and auth choices remain open. A distributed binary must not contain a shared key. Do not add a proxy/backend or collect user keys without owner approval and a confirmed Valve-compliant design. See [Steam integration research](STEAM_INTEGRATION.md).
+The owner explicitly prohibits a GameVault backend/server. Steam's player-data Web API methods list a user Web API key; user-key registration requires an associated domain, while publisher keys require a Steamworks group and must stay server-side. Steam OpenID is documented as a browser-based website flow, not a validated native desktop callback. Never ship a shared key. The only account-data route still under investigation is a user-provided individual key sent directly to Steam, with Windows protected storage; Valve must confirm app/domain registration, use by a third-party desktop app, confidentiality and host/key pairing before any implementation. See [Steam integration research](STEAM_INTEGRATION.md) and [feature feasibility](V1_FEATURE_FEASIBILITY.md).
 
-Steam OpenID is documented for third-party websites to authenticate a SteamID without collecting a password. A browser-based desktop redirect/callback architecture for this local-only app has not been validated. OpenID identity alone does not guarantee access to private game details or achievements. Do not implement until Valve documentation and the terms are checked against the exact design.
+Steam OpenID is documented for third-party websites to authenticate a SteamID without collecting a password. A native callback has not been validated, and a website flow would require a server contrary to the owner decision. OpenID identity alone does not guarantee access to private game details or achievements. It is not selected for v1.
 
 ## Database and migration strategy
 
@@ -97,17 +97,17 @@ Choose NSIS or MSI only after installer/update requirements are clear. Sign publ
 
 ## Architecture decisions still open
 
-1. Steam data access/authentication strategy, domain registration, key ownership, and whether an owner-approved backend is acceptable.
-2. Whether any local Steam-file import is in scope; current master brief excludes scraping and it must not be added by assumption.
+1. Whether Valve permits an individual user key to be used directly by a distributed desktop app, and the correct endpoint host/domain/application registration.
+2. Exact boundary for narrow read-only manifest/localconfig scanning versus unsupported binary cache parsing. Phase 1.6 authorizes research and keeps the integration Proposed.
 3. Exact Rust SQLite library and migration mechanism (`sqlx` is only a candidate).
 4. Project license, third-party asset strategy, and application name clearance.
 5. Installer, update, signing, and support strategy.
 
-## Phase 1.5 review outcome (2026-11-12)
+## Phase 1.5/1.6 review outcome (2026-11-12)
 
-The current recommendation remains **proposed only**: keep the Tauri 2 / React / TypeScript / Rust / SQLite baseline, use SQLite through Rust-owned repositories, and investigate a website OpenID + server-side API path only if the owner accepts hosting and Valve confirms the exact key/application/host arrangement. No backend, auth flow, SQL crate, schema, license, or implementation is approved by these recommendations. If a backend is declined, the owner must explicitly narrow v1 before scaffolding.
+The owner has approved the local-only technology/topology constraints: Tauri 2 / React / TypeScript / Rust / SQLite and no GameVault backend/server. The Phase 1.5 hosted-backend idea is superseded. Exact API access, data schema, Rust SQLite crate and license remain unresolved; no application code is approved in this phase.
 
-See [`FEASIBILITY_REVIEW.md`](FEASIBILITY_REVIEW.md) and [`decisions/`](decisions/) for the four-option API architecture matrix, data capability/privacy matrix, alternatives and six Proposed ADRs. Steam's Web API overview says every call to `partner.steam-api.com` requires a publisher key, while method references show partner-host examples for methods listing a user key. The public-host/user-key arrangement must be confirmed rather than inferred.
+See [`LOCAL_FIRST_ARCHITECTURE.md`](LOCAL_FIRST_ARCHITECTURE.md), [`LOCAL_STEAM_DATA.md`](LOCAL_STEAM_DATA.md), [`V1_FEATURE_FEASIBILITY.md`](V1_FEATURE_FEASIBILITY.md) and [`decisions/`](decisions/). Valve's overview says every call to `partner.steam-api.com` requires a publisher key, while player method references show partner-host examples for methods listing user keys. Confirm the correct public-host/user-key arrangement rather than infer it. The four mandatory features remain in scope; current conclusion is conditional pending Valve's answer.
 
 ## Build readiness
 

@@ -1,11 +1,11 @@
 # ADR-006: Steam Integration Architecture
 
-**Status:** Proposed
+**Status:** Accepted (owner-confirmed architecture constraint; Steam access path unresolved)
 **Date:** 2026-11-12
 
 ## Context
 
-GameVault is a Windows desktop app intended to present Steam library/progress. Player-data APIs require a user Web API key. Steam OpenID is documented as web flow. No shared key may be shipped, and local Steam-file reading is excluded by the product brief.
+The owner explicitly confirmed Windows local-first, Steam-only, Tauri 2 + React/TypeScript + Rust + SQLite, no GameVault backend/server/account/cloud DB, and four mandatory features. Steam player-data APIs require a user Web API key. Steam OpenID is documented as a web flow. No shared key may ship. The Phase 1.6 prompt authorizes research into local file formats but does not by itself approve undocumented cache parsing for production.
 
 ## Problem
 
@@ -15,18 +15,19 @@ Can v1 safely deliver account-connected library/progress in the intended local-f
 
 - Direct desktop plus embedded shared key: rejected.
 - User-provided personal key: no confirmed compliant third-party handling model; not recommended.
-- Website OpenID + GameVault backend with server-side key: strongest candidate, pending Valve confirmation and owner acceptance of cloud/operational responsibilities.
+- Website OpenID + GameVault backend with server-side key: incompatible with the confirmed owner constraint; rejected.
+- Individual user key stored locally and sent to Valve: candidate only pending Valve confirmation of desktop distribution, terms, domain/application registration and endpoint host.
 - Official public catalog only: can provide catalog metadata where permitted, not user ownership/progress.
-- Local file hybrid: excluded from current scope; not a supported substitute for API data.
-- Offline-only organizer: viable fallback only if owner explicitly narrows product scope.
+- Read-only local VDF/ACF for install detection and localconfig playtime: supports a subset; formats are undocumented and do not provide a complete owned library.
+- Reverse-engineered achievement cache parsing: not approved; no stable Valve format/API guarantee.
 
 ## Decision
 
-**Recommendation:** preserve Tauri 2 + React/TypeScript + Rust + SQLite as a proposed technology baseline, but do not scaffold yet. Treat the website/backend path as a conditional research candidate, not an approved architecture. Resolve API key registration, host/key mapping, terms and privacy obligations, then obtain explicit owner decision. If not approved, redefine v1 as offline-only before any scaffold.
+**Accepted owner decision:** implement GameVault only as a local Windows desktop app using the confirmed stack and without a GameVault backend/server/account. Keep Steam integration behind narrow Rust modules. No application scaffolding is authorized in this phase. The remaining Steam source is not yet selected: local manifests can support installed detection, localconfig can provide best-effort per-device playtime, while complete owned library and reliable achievements require Valve-approved direct user-key access or a separate explicit approval to parse unsupported local caches. All four v1 features remain mandatory.
 
 ## Consequences
 
-Account features are blocked. Hosting changes “local-first” expectations, adds availability and privacy duties, and may create cost. The offline-only route would remove core account features and needs product acceptance. Neither route is chosen by this ADR.
+No cloud dependency or service operations are introduced. Local scanning remains available offline but has incomplete coverage. Account data requires a user key and may still be unavailable for private profiles. If Valve rejects local key use and the owner does not approve unsupported local-cache parsing, the current mandatory feature set is not feasible under the accepted architecture; return for an owner decision, do not remove features.
 
 ## Risks
 

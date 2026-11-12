@@ -6,7 +6,7 @@ GameVault is planned as a Windows desktop companion for understanding and organi
 
 ## Current status
 
-The repository contains the product brief, Phase 0 research and Phase 1.5 feasibility review. The current recommendation is **CONDITIONAL GO for planning only**. Steam account connection is blocked on confirmation of API-key registration/host use, authentication and privacy model; no backend has been approved. SAM/ASF are research references only and excluded from v1. All six architecture decisions remain Proposed; achievement-writing behavior is out of scope, and the project license remains an owner decision. See [Phase 1.5 review](docs/FEASIBILITY_REVIEW.md).
+The repository contains the product brief and Phase 1.5/1.6 research. The owner requires a local-only app with four mandatory v1 features: Steam library, installed-game detection, playtime and achievements. Phase 1.6 is **CONDITIONAL GO for planning only**: installed detection is feasible with limitations, while complete account library/playtime and reliable achievements need Valve to confirm a direct per-user key path. A GameVault backend is prohibited. See [Phase 1.6 feature feasibility](docs/V1_FEATURE_FEASIBILITY.md).
 
 ## Intended technology direction
 
@@ -19,7 +19,7 @@ Versions and libraries will be selected after the architecture and security revi
 
 ## Scope
 
-The initial goal is a local-first Windows app for read-only Steam library and progress presentation, plus local organization. Data availability depends on Steam privacy settings and API access. Other storefronts, account automation, game modification, achievement unlock/reset, anti-cheat evasion, cloud accounts, and unsupported Steam client scraping are out of scope.
+The v1 goal is a local-first Windows app for the four mandatory Steam features above. Data availability depends on Steam privacy settings and Valve-approved access. Other storefronts, account automation, game modification, achievement unlock/reset, anti-cheat evasion and all GameVault cloud services are out of scope. Phase 1.6 research covers narrow, read-only local Steam metadata; reverse-engineered achievement-cache parsing is not approved.
 
 ## Repository
 
@@ -38,8 +38,12 @@ GameVault is an independent project and is not affiliated with, endorsed by, or 
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Steam integration research](docs/STEAM_INTEGRATION.md)
+- [Local Steam data inventory](docs/LOCAL_STEAM_DATA.md)
+- [Local-first architecture](docs/LOCAL_FIRST_ARCHITECTURE.md)
+- [v1 feature feasibility](docs/V1_FEATURE_FEASIBILITY.md)
 - [Security](docs/SECURITY.md)
 - [Licensing and attribution](docs/LICENSING.md)
+- [Open-source license recommendation](docs/OPEN_SOURCE_LICENSE_RECOMMENDATION.md)
 - [ASF / SAM audit](docs/SAM_AUDIT.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Development setup](docs/DEVELOPMENT.md)

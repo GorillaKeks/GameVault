@@ -1,5 +1,7 @@
 # GameVault Phase 1.5 — Architecture Decision & Feasibility Review
 
+> **Historical snapshot:** this document records Phase 1.5's conditional hosted-backend candidate. Phase 1.6 records the owner's later explicit decision: no GameVault backend/server and four mandatory features. Use [`V1_FEATURE_FEASIBILITY.md`](V1_FEATURE_FEASIBILITY.md) and [`LOCAL_FIRST_ARCHITECTURE.md`](LOCAL_FIRST_ARCHITECTURE.md) as the current design. The Phase 1.5 recommendation is superseded, not an active option.
+
 **Review date:** 2026-11-12
 **Repository revision reviewed:** `a2093b460bd24eea684c46eb382fb504f0dbdc51` (`main`)
 **Scope:** research, architecture, policy, licensing and read-only local diagnostics. No application implementation, dependency installation, account use or service deployment occurred. This is not legal advice.

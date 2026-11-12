@@ -1,63 +1,66 @@
 # GameVault Roadmap
 
-**Status date:** 2026-11-12. No application features are implemented.
+**Status date:** 2026-11-12. No application features or scaffold exist.
 
-## Phase 0 — Repository and feasibility baseline
+## Phase 0 — Repository and initial feasibility baseline (complete)
 
-**Done for this preparation:**
+- Established the repository and initial product/engineering brief.
+- Added architecture, Steam API, security, license, SAM/ASF and Windows environment research.
+- Created the Phase 1.5 feasibility review and six ADRs. Phase 1.5's backend candidate is historical and superseded by the owner's later no-server decision; see [`FEASIBILITY_REVIEW.md`](FEASIBILITY_REVIEW.md).
 
-- Rechecked local directory and GitHub repository. The remote was empty before initialization; local contained `MASTER_PROMPT.md` only.
-- Initialized local Git on `main`, added `origin`, created `.gitignore`, committed the prompt, and pushed. Commit: `f34f0ea3f628967afad8bcfaeaba3d062405bd13`.
-- Added and expanded architecture, Steam access, security, licensing, ASF/SAM, roadmap, and development research docs.
-- Rechecked Steam endpoint/key distinctions, the likely desktop auth gap, SAM mutation behavior, ASF fit, and local Windows prerequisites against primary sources/current repository files.
-- Completed Phase 1.5 feasibility review, architecture alternatives, expanded data/privacy matrix, six Proposed ADRs, bounded ASF/SAM decision, and read-only Windows toolchain diagnostics. See [`FEASIBILITY_REVIEW.md`](FEASIBILITY_REVIEW.md).
+## Phase 1.6 — Local-first feasibility (research complete; feature gate open)
 
-**Still open before implementation:**
+- Confirmed constraints: no GameVault backend/server/account/cloud database; Windows; Steam only; Tauri 2, React/TypeScript, Rust, SQLite; free and open source.
+- Preserved all four mandatory features: complete game library, installed games, playtime and achievements.
+- Investigated Windows local Steam structures and conducted a privacy-safe, read-only inventory. See [`LOCAL_STEAM_DATA.md`](LOCAL_STEAM_DATA.md).
+- Designed a local architecture and documented the feature-by-feature verdicts. See [`LOCAL_FIRST_ARCHITECTURE.md`](LOCAL_FIRST_ARCHITECTURE.md) and [`V1_FEATURE_FEASIBILITY.md`](V1_FEATURE_FEASIBILITY.md).
+- Recommended Apache-2.0 and prepared a clearly non-operative candidate marker. Exact license text/copyright holder still await owner approval. See [`OPEN_SOURCE_LICENSE_RECOMMENDATION.md`](OPEN_SOURCE_LICENSE_RECOMMENDATION.md).
+- Updated ADRs. Local Tauri topology and SQLite choice reflect explicit owner decisions; the Steam API/key flow and exact license remain Proposed.
 
-- Owner decision: approve a GameVault website/backend that keeps a registered Web API key confidential, confirm a Valve-compliant per-user key model, or narrow v1 to remove account-connected data.
-- Resolve the native desktop authentication flow; Steam OpenID documentation reviewed describes a web-site redirect, not a validated native callback.
-- Obtain authoritative Valve clarification on user-key use for GameVault, app/domain registration, commercial desktop use and the discrepancy between player-method partner-host examples and the overview's publisher-key-only partner host.
-- Owner decision on whether a hosted GameVault website/backend is acceptable. If not, explicitly re-scope v1 to remove account-connected data before app scaffolding.
-- Do not parse local Steam client files. Reopen that scope only if the owner explicitly approves a separately reviewed import.
-- SAM/ASF bounded feasibility decision is complete: both research reference only and excluded from v1. Full exact-file/dependency/asset/policy audit remains necessary before any proposed reuse; no reuse is approved.
-- Select GameVault's own license and check product-name/brand rights before distribution.
-- Check actual Tauri build/runtime compatibility after the owner authorizes a scaffold; the installed tools have not been tested in an app build.
+### Open approval and evidence gates
 
-## Phase 1 — Product and technical foundation
+1. Obtain Valve's answer about individual user API keys in a distributed desktop app, key/domain/application registration, the confidential/no-sharing obligation and correct public host for player methods.
+2. Decide whether unsupported local binary achievement cache parsing may be considered if Valve disallows the direct per-user key path. Current recommendation is not to rely on it as the primary source.
+3. Approve the exact project license (recommended Apache-2.0) and confirm copyright holder before adding a root `LICENSE`.
+4. Keep the four features mandatory. If permitted sources cannot support them, return to the owner for a product decision; do not remove or downgrade one.
+5. Resolve the conflict with the older `MASTER_PROMPT.md`, which still excludes Steam file scraping and allows no change without authorization. Phase 1.6 authorizes research and design of narrow read-only VDF/ACF scanning; the master file was intentionally left unchanged.
 
-1. Decide product requirements and acceptable data sources based on the documented Steam API gate.
-2. Windows prerequisites are mostly present; update Node 24.22.1 to 24.22.3 or newer supported LTS (24.22.3 was a security release on 2026-11-11) and verify a Tauri build after scaffold authorization.
-3. Select and record specific Tauri/React/TypeScript/Rust/SQLite versions and dependencies with license and maintenance checks.
-4. Approve Proposed ADRs, data inventory, threat model, license, and packaging direction.
-5. Only then scaffold an empty app shell with quality checks; no feature implementation before gates pass.
+## Phase 1 — Technical foundation (not started)
 
-## Phase 2 — Local shell and persistence
+1. Resolve Valve/key and achievement-source gates above.
+2. Update Node.js 24.22.1 to a current supported LTS security patch; choose npm or pnpm.
+3. Select exact Tauri/React/TypeScript/Rust/SQLite versions and libraries; review licenses, MSRV, Windows build behavior and maintenance.
+4. Confirm MSVC/Windows SDK detection and run a minimal Tauri shell build after scaffold authorization. The current environment was diagnosed but no build was performed.
+5. Approve implementation-ready architecture/ADR status.
 
-- Accessible desktop shell and settings.
-- Versioned SQLite schema and migration behavior.
-- Clearly separated demo data.
-- User-controlled backup, export, and deletion with verified behavior.
+## Phase 2 — Minimal desktop scaffold (await explicit authorization)
 
-## Phase 3 — Approved read-only Steam connection
+- Create empty Tauri 2 + React/TypeScript + Rust structure, no Steam data functionality.
+- Add formatting/type/lint/Rust quality commands and narrow Tauri permissions.
+- Build and smoke-check on Windows; document actual tool versions/results.
 
-- Implement only a verified and permitted authentication/API path.
-- Handle private profiles, missing fields, offline, throttling, invalid/revoked access, and schema changes honestly.
-- No Steam file scraping or account automation.
+## Phase 3 — Local database and installed-game discovery
 
-## Phase 4 — Library and progress presentation
+- Add versioned local SQLite migrations and Rust-owned repository.
+- Implement a bounded, read-only, configured-root scanner only after approval of the Steam file boundary.
+- Discover multiple libraries; handle unavailable/moved drives, partial manifests and scan failures without false “uninstalled” states.
+- Keep local app data offline-useful and provenance-labelled.
 
-- Library, playtime, and achievements only where the approved source supplies them.
-- Explicit provenance/freshness and correct distinction between unknown and zero.
-- No achievement mutation unless separately reviewed and explicitly approved; current product direction excludes it.
+## Phase 4 — Approved account data: library, playtime and achievements
+
+- Implement only a Valve-confirmed no-backend direct user-key approach, if approved.
+- Preserve private/unavailable/stale/unsupported states and exact user consent/refresh behavior.
+- Add only verified API fields and locally protected key handling; no shared key and no uploads.
+- If key use is rejected, stop and request an owner decision rather than silently relying on a reverse-engineered cache or reducing required scope.
 
 ## Phase 5 — Release readiness
 
-- Accessibility review, performance, localization foundation, privacy/licensing notices, Windows packaging, signing/update decision, support and vulnerability response.
-- Verify clean install/update/uninstall and database retention/restore before release.
+- Accessibility, performance, privacy/security notices, dependency/license inventory, artwork permissions, update/signing approach, user data export/deletion and support/vulnerability process.
+- Verify install/update/uninstall, cache/database retention and offline behavior before release.
 
 ## Acceptance gates
 
-- No phase is complete until its decisions and evidence are documented.
-- No tests or compatibility results may be claimed without running them.
-- The Phase 1.5 assessment is **CONDITIONAL GO for planning only**. Account-connected Steam features and SAM/ASF behavior are not ready for implementation. All six ADRs are Proposed.
-- Do not start implementation automatically after a GO assessment; follow the authorization rule in `MASTER_PROMPT.md`.
+- Research is separate from implementation; no feature is claimed complete based on a file's presence alone.
+- No API, license, security or compatibility result is claimed without evidence.
+- Phase 1.6 assessment: **CONDITIONAL GO** for continued planning; account library and achievements remain gated by Valve. All four features remain required.
+- Do not start Phase 2 automatically. Wait for explicit owner authorization.

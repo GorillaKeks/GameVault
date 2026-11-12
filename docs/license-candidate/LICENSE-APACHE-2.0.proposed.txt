@@ -1,0 +1,10 @@
+PROPOSED LICENSE FILE — NOT EFFECTIVE
+
+This file is a preparation note only. It grants no license to use, copy, modify, or distribute GameVault. Do not treat it as an open-source license and do not rename it to the repository-root LICENSE without explicit approval from the project owner.
+
+Recommended candidate: Apache License, Version 2.0 (SPDX-License-Identifier: Apache-2.0).
+
+If approved, replace this entire file with the exact official Apache-2.0 text from:
+https://www.apache.org/licenses/LICENSE-2.0.txt
+
+Copyright holder and year must be confirmed by the project owner before publication. Preserve any applicable NOTICE and third-party license obligations.

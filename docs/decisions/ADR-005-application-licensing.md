@@ -1,11 +1,11 @@
 # ADR-005: GameVault Project License
 
-**Status:** Proposed
+**Status:** Proposed (open-source model owner-confirmed; exact license pending)
 **Date:** 2026-11-12
 
 ## Context
 
-The public repository has no license file. Public availability alone grants no general permission to reuse GameVault code. No third-party runtime dependency has been added.
+The owner confirmed that GameVault must be free and open source. The public repository still has no license file; public availability alone grants no general permission to reuse GameVault code. No third-party runtime dependency has been added.
 
 ## Problem
 
@@ -21,7 +21,7 @@ Which license should govern GameVault source distribution, downstream reuse, con
 
 ## Decision
 
-**Recommendation:** if the owner wants openly licensed and permissively reusable code, Apache-2.0 is a reasonable default; MIT is simpler. No selection is made until the owner confirms open-source versus closed-source goals and contribution model. Do not create a `LICENSE` file or imply a license in the README yet.
+**Recommendation:** Apache-2.0, because the owner requires FOSS and the project targets commercial redistribution and community contribution with permissive reuse and an express contributor patent grant. MIT is the simpler alternative; GPL-3.0-only or MPL-2.0 fit if the owner wants stronger reciprocal obligations. The exact Apache-2.0 text and copyright holder remain pending explicit approval. A non-operative candidate marker is prepared in `../license-candidate/`; do not add a root `LICENSE` until approval.
 
 ## Consequences
 
@@ -41,3 +41,4 @@ This is not legal advice. Compatibility depends on actual versions and distribut
 - https://github.com/facebook/react
 - https://www.sqlite.org/copyright.html
 - `../LICENSING.md`
+- `../OPEN_SOURCE_LICENSE_RECOMMENDATION.md`
