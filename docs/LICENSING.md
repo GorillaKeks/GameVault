@@ -26,7 +26,7 @@ Use Steam/Valve marks descriptively, follow current brand guidance, and state th
 
 The requested ArchiSteamFarm repository currently links an Apache-2.0 license and its `LICENSE.txt` contains Apache License 2.0. Reuse would require retaining license/copyright notices, including a copy of the license and handling any upstream NOTICE file and modifications as Apache-2.0 requires. This is not legal advice. See [ASF repository](https://github.com/JustArchiNET/ArchiSteamFarm) and [ASF license](https://github.com/JustArchiNET/ArchiSteamFarm/blob/main/LICENSE.txt).
 
-This ASF observation does not establish the license or status of Steam Achievement Manager (SAM); they are distinct projects. See [SAM/ASF audit](SAM_AUDIT.md).
+ASF and Steam Achievement Manager (SAM) are distinct projects. The likely upstream SAM repository, `gibbed/SteamAchievementManager`, currently contains a zlib license notice. If any code is reused, preserve the notice, identify modifications, review all bundled dependencies/assets (including Fugue Icons attribution in its README), and record provenance. The preliminary SAM audit recommends no reuse for v1; see [SAM/ASF audit](SAM_AUDIT.md). These findings are not legal advice.
 
 ## Release checklist
 

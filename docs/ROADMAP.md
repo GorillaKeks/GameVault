@@ -13,7 +13,7 @@
 **Still open:**
 
 - Resolve the Steam API key/authentication/privacy model for a distributed desktop app.
-- Complete a true SAM source/license/behavior audit (ASF is not SAM).
+- Complete the remaining SAM review: desired-file/dependency/asset inventory and policy review. ASF is not SAM; bounded SAM source/license review is recorded in `docs/SAM_AUDIT.md`.
 - Select GameVault's own license and check product-name/brand rights before distribution.
 
 ## Phase 1 — Product and technical foundation

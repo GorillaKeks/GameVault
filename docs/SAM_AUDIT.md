@@ -6,7 +6,7 @@
 
 Steam Achievement Manager (SAM) and ArchiSteamFarm (ASF) are different projects. The prior product discussion proposed SAM-derived achievement functionality. The pasted execution request separately asks to audit ASF. Do not substitute one audit for the other or infer one project's license/security properties from the other.
 
-This document covers ASF as requested and records that the SAM source, exact revision, license, dependency set, and behavior have **not** yet been audited. No SAM-derived code or behavior is approved.
+This document covers ASF as requested and a bounded review of the likely upstream SAM repository. No SAM-derived code or behavior is approved.
 
 ## ASF facts observed
 
@@ -34,13 +34,26 @@ This document covers ASF as requested and records that the SAM source, exact rev
 
 ## SAM remains an unresolved gate
 
-For Steam Achievement Manager (SAM), before any implementation:
+The upstream matching the prior discussion appears to be [gibbed/SteamAchievementManager](https://github.com/gibbed/SteamAchievementManager). Its `master` branch was observed at `de8b71048a0cee3c3e97cd8535e0f55ca86513e4` on the research date.
+
+Observed from its current README and project/source files:
+
+- README describes a portable SAM tool that requires the Steam client to be running and the user logged in. It says the original closed-source version dates to 2008, with 2011 major and 2013 hotfix releases; the current public source includes maintenance changes and a Fugue Icons attribution.
+- `LICENSE.txt` is the zlib License, copyright notice for Rick (gibbed), 2024. It allows reuse subject to preserving the notice, not misrepresenting origin, and marking modified versions. If used, the source/binary distribution and product notices must be reviewed against the full current license and icon asset license.
+- `SAM.Game.csproj` is a Windows `WinExe` targeting .NET Framework 4.8, x86, and references Windows Forms plus the `SAM.API` project. This is a different implementation stack from Tauri/Rust.
+- The source search shows `Manager.cs` requesting user stats and the `ISteamUserStats` wrapper exposing methods such as `GetAchievement` and `SetAchievement`. This is game/client-facing Steamworks API interaction rather than a documented, generic Steam Web API feed. The source surface makes achievement mutation technically relevant but does not establish that GameVault may safely or permissibly perform it.
+- This was a focused repository/source-reference review, not a full line-by-line audit of every file, bundled icon, native dependency, or current Valve policy. No binary was run and no Steam account was used.
+
+Recommendation for SAM: **Do not reuse or integrate for v1.** Its original purpose includes managing achievements/statistics, it relies on a running Steam client and a legacy x86 .NET/Windows Forms architecture, and its API surface includes achievement mutation. It does not solve GameVault's supported account-library access/key problem. Read-only reuse would still require a precise source-level slice, complete dependency/assets and license inventory, a supported API design, and a separate product decision. The user has not approved any such feature.
+
+Before revisiting SAM, re-check:
 
 1. Identify the authoritative upstream repository, exact revision and current license/notice.
-2. Read its source and dependencies; map how it communicates with Steam/games and whether it writes achievement state, uses undocumented interfaces, or inspects processes/memory.
-3. Review current Steam terms, anti-cheat/account risks, and distribution implications.
-4. Document a written go/no-go and safer alternatives.
-5. Obtain explicit product approval before any SAM-derived code or achievement-writing feature.
+2. Complete line-by-line review of the desired files, transitive dependencies, icons/assets, and build provenance.
+3. Map how it communicates with Steam/games and whether it writes achievement state, uses undocumented interfaces, or inspects processes/memory.
+4. Review current Steam terms, anti-cheat/account risks, and distribution implications.
+5. Document a written go/no-go and safer alternatives.
+6. Obtain explicit product approval before any SAM-derived code or achievement-writing feature.
 
 Until then, SAM is **not approved for reuse** and achievement unlock/reset/edit actions remain out of scope. Do not imply that ASF's Apache-2.0 license applies to SAM.
 
@@ -49,4 +62,9 @@ Until then, SAM is **not approved for reuse** and achievement unlock/reset/edit 
 - ASF repository and README: https://github.com/JustArchiNET/ArchiSteamFarm
 - ASF current license text: https://github.com/JustArchiNET/ArchiSteamFarm/blob/main/LICENSE.txt
 - ASF audited branch revision: https://github.com/JustArchiNET/ArchiSteamFarm/commit/0ea1a106e4e6a705d004fc127bf66fa5593a2ff7
+- SAM repository and README: https://github.com/gibbed/SteamAchievementManager
+- SAM license text: https://github.com/gibbed/SteamAchievementManager/blob/master/LICENSE.txt
+- SAM audited branch revision: https://github.com/gibbed/SteamAchievementManager/commit/de8b71048a0cee3c3e97cd8535e0f55ca86513e4
+- SAM project file: https://github.com/gibbed/SteamAchievementManager/blob/master/SAM.Game/SAM.Game.csproj
+- SAM achievement wrapper source: https://github.com/gibbed/SteamAchievementManager/blob/master/SAM.API/Wrappers/SteamUserStats013.cs
 - Steam Web API Terms: https://steamcommunity.com/dev/apiterms
