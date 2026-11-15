@@ -10,6 +10,7 @@ GameVault is an experimental, local-first Windows desktop companion for viewing 
 
 - Detects a conventional local Steam installation and installed-game manifests across discovered Steam libraries.
 - Shows each detected game's name and AppID.
+- Provides an interface language selector for English, French, German, Portuguese, and Spanish; remembers the selection and otherwise follows the system/browser language when supported.
 - Looks for a small JPEG icon in that game's local Steam icon cache; shows the game's initial if no suitable cached icon is available.
 - Lets the user explicitly request achievements for an installed game through the already-running, signed-in Steam client.
 - Displays achievement names, descriptions, earned or locked state, and unlock date when supplied by Steam.
@@ -17,6 +18,8 @@ GameVault is an experimental, local-first Windows desktop companion for viewing 
 - Reports unavailable or incomplete local data instead of treating it as a complete account library.
 
 Achievement access uses private, version-sensitive Steam client interfaces. It is labeled experimental in the app and fails closed when required interfaces or data are unavailable. The one recorded live observation was Dune: Awakening (AppID 1172710), with 74 achievements returned and 8 earned. The exact Steam client build was not captured, and no compatibility range has been established.
+
+Game names and achievement names/descriptions are supplied by Steam and are displayed as returned; their language depends on the data available from Steam.
 
 ## Product boundaries
 

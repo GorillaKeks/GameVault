@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { detectLanguage, languageNames, languages, localizeSteamError, translate, type Language } from "./i18n";
 import "./App.css";
 
 type GameCandidate = { app_id: string; name: string; schema_available: boolean; icon_jpeg: number[] | null };
@@ -14,6 +15,8 @@ type Inspection = {
 type Achievement = { id: string; name: string; description: string; achieved: boolean; unlock_time: number | null };
 type AchievementReadResult = { status: "available" | "unavailable"; achievements: Achievement[]; message: string | null };
 
+const localeFor: Record<Language, string> = { en: "en-US", de: "de-DE", fr: "fr-FR", es: "es-ES", pt: "pt-PT" };
+
 function GameIcon({ game }: { game: GameCandidate }) {
   const [imageFailed, setImageFailed] = useState(false);
 
@@ -25,19 +28,22 @@ function GameIcon({ game }: { game: GameCandidate }) {
   for (const byte of game.icon_jpeg) binary += String.fromCharCode(byte);
   const imageUrl = `data:image/jpeg;base64,${btoa(binary)}`;
 
-  return (
-    <div className="game-icon" aria-hidden="true">
-      <img src={imageUrl} alt="" onError={() => setImageFailed(true)} />
-    </div>
-  );
+  return <div className="game-icon" aria-hidden="true"><img src={imageUrl} alt="" onError={() => setImageFailed(true)} /></div>;
 }
 
 function App() {
+  const [language, setLanguage] = useState<Language>(detectLanguage);
   const [result, setResult] = useState<Inspection | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [achievementResults, setAchievementResults] = useState<Record<string, AchievementReadResult>>({});
   const [achievementBusy, setAchievementBusy] = useState<string | null>(null);
+  const t = (key: Parameters<typeof translate>[1], values?: Record<string, string | number>) => translate(language, key, values);
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+    localStorage.setItem("gamevault-language", language);
+  }, [language]);
 
   async function inspect() {
     setBusy(true);
@@ -45,7 +51,7 @@ function App() {
     try {
       setResult(await invoke<Inspection>("inspect_local_steam"));
     } catch {
-      setError("Steam-Verzeichnisse konnten nicht geprüft werden.");
+      setError(t("inspectError"));
     } finally {
       setBusy(false);
     }
@@ -59,50 +65,74 @@ function App() {
     } catch {
       setAchievementResults((previous) => ({
         ...previous,
-        [appId]: { status: "unavailable", achievements: [], message: "Errungenschaften konnten nicht gelesen werden." },
+        [appId]: { status: "unavailable", achievements: [], message: null },
       }));
     } finally {
       setAchievementBusy(null);
     }
   }
 
+  const readCount = Object.values(achievementResults).filter((entry) => entry.status === "available").length;
+
   return (
     <main className="shell">
-      <aside className="rail"><div className="brand-mark">G</div><span className="rail-active">▦</span><span>◷</span><span>⚙</span><div className="rail-bottom">GK</div></aside>
+      <aside className="rail" aria-label="GameVault">
+        <div className="brand-mark">G</div>
+        <span className="rail-active" aria-label={t("libraryTitle")}>▦</span>
+        <span aria-hidden="true">◷</span><span aria-hidden="true">⚙</span>
+        <div className="rail-bottom">GK</div>
+      </aside>
       <section className="content">
-        <header><div><p className="eyebrow">YOUR GAMING PROGRESS. ONE PLACE.</p><h1>GameVault</h1></div><span className="local-pill"><i /> LOCAL ONLY</span></header>
-        <section className="welcome">
-          <div><p className="eyebrow">STEAM LIBRARY</p><h2>Deine Spiele, auf einen Blick.</h2><p>GameVault prüft lokale Steam-Installationen und zeigt, welche Daten auf diesem PC verfügbar sind.</p></div>
-          <button onClick={inspect} disabled={busy}>{busy ? "Wird geprüft …" : "Steam lokal prüfen"}<span>→</span></button>
-        </section>
-        <div className="section-heading"><div><h2>Übersicht</h2><p>Lokale Erkennung · Nur lesend</p></div><span className="muted">{result ? `${result.games.length} lokale Einträge` : "Noch nicht geprüft"}</span></div>
-        {error && <div className="error">{error}</div>}
-        {!result ? <div className="empty"><div className="empty-icon">▤</div><h3>Deine Bibliothek wartet</h3><p>Starte die lokale Prüfung. GameVault verändert keine Steam-Dateien und benötigt keine Zugangsdaten.</p></div> : <>
-          <div className="status-grid">
-            <article className="status-card"><span>STEAM-INSTALLATION</span><strong>{result.installation_found ? "Gefunden" : "Nicht gefunden"}</strong><small>Übliche Installationsorte wurden geprüft</small></article>
-            <article className="status-card"><span>STEAM-SITZUNG</span><strong>{result.client_session}</strong><small>Verbindung nur während einer angeforderten Leseaktion</small></article>
-            <article className="status-card"><span>ACHIEVEMENTS</span><strong>{Object.values(achievementResults).some((entry) => entry.status === "available") ? "Daten gelesen" : Object.keys(achievementResults).length > 0 ? "Nicht verfügbar" : result.achievements}</strong><small>Für einzelne installierte Spiele auf Anfrage lesbar</small></article>
+        <header>
+          <div><p className="eyebrow">{t("tagline")}</p><h1>GameVault</h1></div>
+          <div className="header-actions">
+            <label className="language-picker"><span>{t("language")}</span>
+              <select value={language} onChange={(event) => setLanguage(event.target.value as Language)} aria-label={t("language")}>
+                {languages.map((code) => <option key={code} value={code}>{languageNames[code]}</option>)}
+              </select>
+            </label>
+            <span className="local-pill"><i /> {t("localOnly")}</span>
           </div>
-          <div className="notice">{result.note}{result.scan_incomplete ? " Einige lokale Einträge konnten wegen Zugriffsbeschränkungen oder Sicherheitslimits nicht geprüft werden." : ""}</div>
-          <div className="game-list">{result.games.map((game) => {
+        </header>
+        <section className="welcome">
+          <div><p className="eyebrow">{t("steamLibrary")}</p><h2>{t("headline")}</h2><p>{t("intro")}</p></div>
+          <button onClick={inspect} disabled={busy}>{busy ? t("scanning") : t("scan")}<span>→</span></button>
+        </section>
+        <div className="section-heading">
+          <div><h2>{t("overview")}</h2><p>{t("localReadOnly")}</p></div>
+          <span className="muted">{result ? t("gamesFound", { count: new Intl.NumberFormat(localeFor[language]).format(result.games.length) }) : t("notScanned")}</span>
+        </div>
+        {error && <div className="error" role="alert">{error}</div>}
+        {!result ? <div className="empty"><div className="empty-icon">▤</div><h3>{t("waitingTitle")}</h3><p>{t("waitingText")}</p></div> : <>
+          <div className="status-grid">
+            <article className="status-card"><span>{t("steamInstall")}</span><strong>{result.installation_found ? t("found") : t("notFound")}</strong><small>{result.installation_found ? t("commonLocations") : t("noSteam")}</small></article>
+            <article className="status-card"><span>{t("steamSession")}</span><strong>{t("notConnected")}</strong><small>{t("sessionDetail")}</small></article>
+            <article className="status-card"><span>{t("achievements")}</span><strong>{readCount > 0 ? t("dataRead") : Object.keys(achievementResults).length > 0 ? t("unavailable") : t("notRead")}</strong><small>{t("achievementsDetail")}</small></article>
+          </div>
+          <div className="notice">{result.installation_found ? t("detectedNote") : t("noSteam")}{result.scan_incomplete ? ` ${t("incompleteScan")}` : ""}</div>
+          <div className="game-list" aria-label={t("libraryTitle")}>{result.games.map((game) => {
             const achievementResult = achievementResults[game.app_id];
             return <article className="game-card" key={game.app_id}>
-              <div className="game-row"><GameIcon game={game} /><div className="game-name"><strong>{game.name}</strong><span>AppID {game.app_id} · lokal installiert</span></div><button className="achievement-load" onClick={() => readAchievements(game.app_id)} disabled={achievementBusy !== null}>{achievementBusy === game.app_id ? "Lese …" : achievementResult ? "Erneut lesen" : "Errungenschaften anzeigen"}</button></div>
+              <div className="game-row"><GameIcon game={game} /><div className="game-name"><strong>{game.name}</strong><span>AppID {game.app_id} · {t("installed")}</span></div>
+                <button className="achievement-load" onClick={() => readAchievements(game.app_id)} disabled={achievementBusy !== null}>
+                  {achievementBusy === game.app_id ? t("loading") : achievementResult ? t("reloadAchievements") : t("loadAchievements")}
+                </button>
+              </div>
               {achievementResult && <div className="achievement-panel">
-                {achievementResult.status === "unavailable" ? <p className="achievement-unavailable">{achievementResult.message ?? "Errungenschaftsdaten nicht verfügbar."}</p> : <>
-                  <div className="achievement-summary"><strong>{achievementResult.achievements.filter((item) => item.achieved).length} / {achievementResult.achievements.length}</strong><span>freigeschaltet · direkt vom Steam-Client gelesen</span></div>
-                  {achievementResult.achievements.length === 0 ? <p className="achievement-unavailable">Steam meldet für dieses Spiel keine Errungenschaften.</p> : <ul className="achievement-list">{achievementResult.achievements.map((achievement) => <li key={achievement.id}>
+                {achievementResult.status === "unavailable" ? <p className="achievement-unavailable">{localizeSteamError(achievementResult.message, language)}</p> : <>
+                  <div className="achievement-summary"><strong>{new Intl.NumberFormat(localeFor[language]).format(achievementResult.achievements.filter((item) => item.achieved).length)} / {new Intl.NumberFormat(localeFor[language]).format(achievementResult.achievements.length)}</strong><span>{t("earned")}</span></div>
+                  {achievementResult.achievements.length === 0 ? <p className="achievement-unavailable">{t("noAchievements")}</p> : <ul className="achievement-list">{achievementResult.achievements.map((achievement) => <li key={achievement.id}>
                     <span className={achievement.achieved ? "achievement-state earned" : "achievement-state"}>{achievement.achieved ? "✓" : "○"}</span>
                     <div><strong>{achievement.name}</strong>{achievement.description && <p>{achievement.description}</p>}</div>
-                    {achievement.unlock_time !== null && <time>{new Date(achievement.unlock_time * 1000).toLocaleDateString()}</time>}
+                    {achievement.unlock_time !== null && <time>{new Intl.DateTimeFormat(localeFor[language]).format(new Date(achievement.unlock_time * 1000))}</time>}
                   </li>)}</ul>}
                 </>}
-                <small>Steam verarbeitet die Anfrage für dein angemeldetes Konto. Experimentelle Client-Schnittstelle · Nur lesend</small>
+                <small>{t("steamRequestNote")}</small>
               </div>}
             </article>;
           })}</div>
         </>}
-        <footer><span>GameVault · Windows · Steam</span><span>Experimenteller lokaler Prototyp</span></footer>
+        <footer><span>{t("windowsSteam")}</span><span>{t("prototype")}</span></footer>
       </section>
     </main>
   );
