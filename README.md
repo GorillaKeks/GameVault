@@ -15,11 +15,11 @@ The repository contains the product brief, Phase 1.5–1.7 research and an initi
 - Rust application services
 - SQLite local persistence
 
-The initial scaffold uses the candidate stack recorded in [Foundation readiness](docs/FOUNDATION_READINESS.md). Dependencies have not been installed and no scaffold build has been run. See [Architecture](docs/ARCHITECTURE.md), [Development](docs/DEVELOPMENT.md), and [ADRs](docs/decisions/).
+The initial scaffold uses the candidate stack recorded in [Foundation readiness](docs/FOUNDATION_READINESS.md). Rust and npm dependencies are locked; the scanner's native tests, frontend production build, and an unbundled Tauri release build pass. Installer packaging and a desktop runtime smoke test remain unverified. See [Architecture](docs/ARCHITECTURE.md), [Development](docs/DEVELOPMENT.md), and [ADRs](docs/decisions/).
 
 ## Scope
 
-The v1 goal is a local-first Windows app for the four mandatory Steam features above. Data availability depends on Steam privacy settings and the limitations of each data source. Other storefronts, account automation, game modification, achievement unlock/reset, anti-cheat evasion and all GameVault cloud services are out of scope. The owner has authorized pursuit of the narrow read-only Steam client/schema route in [ADR-007](docs/decisions/ADR-007-read-only-steam-client-integration.md); this is not a claim of Valve support or complete library coverage.
+The v1 goal is a local-first Windows app for the four mandatory Steam features above. Data availability depends on Steam privacy settings and the limitations of each data source. Other storefronts, account automation, game modification, achievement unlock/reset, anti-cheat evasion and all GameVault cloud services are out of scope. The owner has authorized planning the narrow read-only Steam client/schema route in [ADR-007](docs/decisions/ADR-007-read-only-steam-client-integration.md); implementation remains gated and this is not a claim of Valve support or complete library coverage.
 
 ## Repository
 

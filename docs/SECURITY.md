@@ -24,12 +24,18 @@ No telemetry, analytics, account service, or network data sharing is approved by
 - Do not expose arbitrary filesystem paths or spawn a shell from a UI command.
 - Phase 1.6 authorizes research for a narrow read-only Steam library scanner, not broad Steam-file import. If later implemented, require configured/user-selected roots, canonicalize paths, read only known manifests/library metadata, defend against path traversal, bound file sizes/depth, and document that Steam provides no third-party schema contract. Do not recursively scan saves or arbitrary game/user data.
 
+### Current local scanner review (2026-11-15)
+
+The prototype remains read-only. The scanner now caps `libraryfolders.vdf` at 64 KiB, limits candidate libraries to 64, limits total directory entries to 65,536 and manifest files to 4,096 per scan, and caps each manifest at 1 MiB. Steam and library roots, `steamapps`, and manifest files are canonicalized; linked `steamapps` or manifest paths that resolve outside their expected parent are rejected. Absolute Steam-root and manifest paths were removed from the IPC DTO, and the UI reports when a scan is incomplete.
+
+Eight synthetic Rust tests cover manifest field parsing/validation, bounded reads, library discovery and candidate limits, oversized VDF handling, incomplete scans, schema-presence display, manifest filename/content ID mismatch, and absence of raw filesystem paths in serialized IPC output. `cargo test --offline` and `cargo fmt --check` pass. Add explicit symlink-escape and directory-entry-limit test cases before increasing scanner scope. This work does not authorize Steam-client calls, achievement-cache parsing, or any undocumented substitute for the blocked account features.
+
 ## Network and external data
 
 - HTTPS with standard certificate validation, finite timeouts, bounded response sizes, content-type checks, and safe JSON parsing.
 - Map errors without logging keys or full sensitive responses. Apply conservative request volume and respect any published limits.
 - Treat game names/descriptions and profile strings as untrusted display content; escape/render as text and do not allow active HTML.
-- Do not bypass a private profile or use process/memory inspection. The owner has authorized only the narrow read-only SAM-inspired Steam client/cache path documented in [`SAM_READ_ONLY_INTEGRATION.md`](SAM_READ_ONLY_INTEGRATION.md); treat its interfaces and schema as untrusted/unstable, fail closed, and never call write/reset functions.
+- Do not bypass a private profile or use process/memory inspection. The owner has authorized planning only for the narrow read-only SAM-inspired Steam client/cache path documented in [`SAM_READ_ONLY_INTEGRATION.md`](SAM_READ_ONLY_INTEGRATION.md); treat its interfaces and schema as untrusted/unstable, fail closed, and never call write/reset functions.
 
 ## Persistence and user controls
 
@@ -65,7 +71,7 @@ No security tests have been run because no application exists.
 
 Steam OpenID proves a Steam identity only after a relying party validates the assertion; it is not API authorization. A website flow is not selected because the owner prohibits a GameVault server. Any future web research must still validate exact `return_to`, discovery/signature and nonce replay protection; never trust a callback SteamID before validation.
 
-No Steam Web API key may be embedded in the executable, frontend, source or release artifact. A GameVault backend is prohibited. An individual user key stored in Windows Credential Manager/DPAPI and used directly by Rust is only a candidate pending Valve confirmation. Do not request or persist user keys before approval. The owner has separately authorized pursuit of a read-only SAM-inspired integration using the logged-in Steam client and its local achievement schema cache; the native boundary, parser limits, interface/version failures and no-write guarantee must be reviewed before implementation. See [`SAM_READ_ONLY_INTEGRATION.md`](SAM_READ_ONLY_INTEGRATION.md). Never bind or call achievement/stat mutation or reset functions; never inject into a game, inspect process memory, or read credentials/session files.
+No Steam Web API key may be embedded in the executable, frontend, source or release artifact. A GameVault backend is prohibited. An individual user key stored in Windows Credential Manager/DPAPI and used directly by Rust is only a candidate pending Valve confirmation. Do not request or persist user keys before approval. The owner has authorized planning only for a read-only SAM-inspired integration using the logged-in Steam client and its local achievement schema cache; policy, native boundary, parser limits, interface/version failures and the no-write guarantee remain implementation gates. See [`SAM_READ_ONLY_INTEGRATION.md`](SAM_READ_ONLY_INTEGRATION.md). Never bind or call achievement/stat mutation or reset functions; never inject into a game, inspect process memory, or read credentials/session files.
 
 Privacy states must distinguish `private/unavailable`, `unsupported`, `missing`, `stale`, `error`, and numeric zero. Private data, network failure, absent schema and missing installation must not be rendered as empty ownership, zero playtime, all achievements locked or “not installed.” Preserve the last permitted cache with provenance/timestamp and redacted diagnostics.
 

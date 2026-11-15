@@ -65,7 +65,9 @@ These are conventions to configure, not commands already present or run:
 
 ## Prerequisite status for Phase 2
 
-**Update 2026-11-12:** Phase 2 scaffold has since been created under `app/`. Node 26.13.1 is available as a portable user-local toolchain with npm 11.20.0; the system Node was not changed. No project dependencies were installed and no build or tests were run. See [`DEVELOPMENT.md`](DEVELOPMENT.md) for current status.
+**Scaffold update 2026-11-12:** Phase 2 scaffold was created under `app/`. Node 26.13.1 is available as a portable user-local toolchain with npm 11.20.0; the system Node was not changed.
+
+**Scanner/build update 2026-11-15:** `Cargo.lock` and `app/package-lock.json` are present. Eight synthetic Rust scanner tests, formatting, Clippy, the frontend production build, and `cargo tauri build --no-bundle` passed using the existing portable Node/npm toolchain. Installer packaging and desktop runtime smoke testing remain unverified. See [`DEVELOPMENT.md`](DEVELOPMENT.md) for exact commands/results.
 
 | Prerequisite | State |
 |---|---|

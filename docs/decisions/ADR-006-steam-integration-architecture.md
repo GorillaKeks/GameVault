@@ -1,11 +1,11 @@
 # ADR-006: Steam Integration Architecture
 
-**Status:** Accepted for local-only topology; read-only Steam client/cache path approved for pursuit by owner
+**Status:** Accepted for local-only topology; read-only Steam client/cache path authorized for planning only under ADR-007
 **Date:** 2026-11-12
 
 ## Context
 
-The owner explicitly confirmed Windows local-first, Steam-only, Tauri 2 + React/TypeScript + Rust + SQLite, no GameVault backend/server/account/cloud DB, and four mandatory features. Steam player-data APIs require a user Web API key. Steam OpenID is documented as a web flow. No shared key may ship. On 2026-11-12 the owner additionally directed GameVault to pursue SAM's points 1–3 in a strictly read-only form: connect to the logged-in Steam client, match candidate AppIDs, and display achievement definitions/earned state. This is an explicit product direction, not evidence of Valve approval or a support contract.
+The owner explicitly confirmed Windows local-first, Steam-only, Tauri 2 + React/TypeScript + Rust + SQLite, no GameVault backend/server/account/cloud DB, and four mandatory features. Steam player-data APIs require a user Web API key. Steam OpenID is documented as a web flow. No shared key may ship. On 2026-11-12 the owner additionally authorized planning SAM's points 1–3 in a strictly read-only form: connect to the logged-in Steam client, match candidate AppIDs, and plan display of achievement definitions/earned state. This is an explicit planning direction, not implementation authorization, Valve approval, or a support contract.
 
 ## Problem
 
@@ -19,12 +19,12 @@ Can v1 safely deliver account-connected library/progress in the intended local-f
 - Individual user key stored locally and sent to Valve: candidate only pending Valve confirmation of desktop distribution, terms, domain/application registration and endpoint host.
 - Official public catalog only: can provide catalog metadata where permitted, not user ownership/progress.
 - Read-only local VDF/ACF for install detection and localconfig playtime: supports a subset; formats are undocumented and do not provide a complete owned library.
-- Read-only direct Steam client interface plus local achievement schema cache, as SAM does: now owner-approved to pursue; uses undocumented/versioned interfaces and binary cache without a Valve compatibility guarantee. Details/limits: `../SAM_READ_ONLY_INTEGRATION.md`.
+- Read-only direct Steam client interface plus local achievement schema cache, as SAM does: planning only under ADR-007; it uses undocumented/versioned interfaces and binary cache without a Valve compatibility guarantee. Details/limits: `../SAM_READ_ONLY_INTEGRATION.md`.
 - SAM-hosted AppID catalog: not adopted; it is a third-party catalog and cannot guarantee a complete owned library.
 
 ## Decision
 
-**Accepted owner decisions:** implement GameVault only as a local Windows desktop app using the confirmed stack and without a GameVault backend/server/account. Keep Steam integration behind narrow Rust modules. Pursue a clean, read-only SAM-inspired adapter for Steam-session connection, AppID matching and achievement reading; do not copy SAM code/assets unless separately reviewed and approved. Do not expose or call achievement/stat setters, store or reset functions. This is not a claim of Valve support. The four v1 features remain mandatory: the selected route still does not guarantee a complete owned library or account-wide playtime.
+**Accepted owner decisions:** implement GameVault only as a local Windows desktop app using the confirmed stack and without a GameVault backend/server/account. Keep Steam integration behind narrow Rust modules. Plan a clean, read-only SAM-inspired adapter for Steam-session connection, AppID matching and achievement reading; do not implement it until ADR-007's policy, security, compatibility and test gates pass. Do not copy SAM code/assets unless separately reviewed and approved. Do not expose or call achievement/stat setters, store or reset functions. This is not a claim of Valve support. The four v1 features remain mandatory: the planned route does not guarantee a complete owned library or account-wide playtime.
 
 ## Consequences
 

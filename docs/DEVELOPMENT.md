@@ -1,6 +1,6 @@
 # Development Environment and Workflow
 
-**Inspection date:** 2026-11-12. An initial app scaffold exists in `../app`; dependencies are not installed and build/linker integration is not yet verified.
+**Environment inspection:** 2026-11-12. **Scanner and build update:** 2026-11-15. The scaffold exists in `../app`; Rust and npm dependencies are locked, native unit tests and frontend production build pass, and the unbundled Tauri release executable builds. Installer packaging and runtime smoke testing remain open.
 
 Phase 1.7 recheck on 2026-11-12 found Windows 11 Home 25H2 `10.0.26200.9711` (64-bit). See [`FOUNDATION_READINESS.md`](FOUNDATION_READINESS.md) for the current toolchain assessment; [`FEASIBILITY_REVIEW.md`](FEASIBILITY_REVIEW.md) retains the earlier baseline.
 
@@ -10,7 +10,7 @@ Phase 1.7 recheck on 2026-11-12 found Windows 11 Home 25H2 `10.0.26200.9711` (64
 |---|---|
 | Git | 2.56.0.windows.3; local `main` tracks `origin/main` |
 | Node.js | System v24.22.1; portable user-local v26.13.1 downloaded and checksum-verified for scaffold work |
-| npm / pnpm | System npm 11.19.1 / pnpm 11.25.0; project selects npm; portable Node includes npm 11.20.0 |
+| npm / pnpm | Portable Node.js `26.13.1` / npm `11.20.0` are available in the user-local GameVault tools folder and were invoked directly for this build. System npm/pnpm are not on the current shell PATH. |
 | Rust / Cargo / rustup | rustc 1.99.1, Cargo 1.99.1, rustup 1.29.1; active `stable-x86_64-pc-windows-msvc`; target `x86_64-pc-windows-msvc` installed |
 | Tauri CLI | `cargo tauri --version` reports `tauri-cli 2.12.4`; standalone `tauri` is not on PATH |
 | Visual Studio Build Tools | VS 2022 Build Tools 17.14.37806.7 and VS 18 Build Tools 18.11.12324.101 found; `vswhere` confirms the C++ x86/x64 component in VS 18; MSVC `14.51.36231` compiler found, not on current shell PATH |
@@ -21,27 +21,35 @@ Phase 1.7 recheck on 2026-11-12 found Windows 11 Home 25H2 `10.0.26200.9711` (64
 
 Tauri's current [Windows prerequisites](https://v2.tauri.app/start/prerequisites/) include MSVC C++ Build Tools and WebView2, plus Rust and Node for a JS frontend. Those components were found locally. The C++ component is confirmed in Visual Studio Build Tools 2026, but a real Tauri build has not verified linker/runtime integration. Node 24 is LTS and suitable as a line, but update it to v24.22.3 before scaffolding; alternatively validate the newer Node 26 LTS against the chosen frontend toolchain. No software was installed or system configuration changed. See the [Node 24.22.3 security release](https://nodejs.org/en/blog/release/v24.22.3).
 
-These checks do **not** prove a working Tauri build: no Rust/Node dependency resolution or Windows installer build was run. Compiler binaries and the Visual Studio C++ component were found; linker/runtime integration is unverified and `cl.exe` is not exposed through the current shell's PATH. `cargo tauri --version` works and reports `tauri-cli 2.12.4`. A global Node update requested Administrator consent and was not completed; project work uses a separate portable Node toolchain.
+The Rust native library, frontend production bundle, and unbundled Tauri release executable have built. No installer bundle or desktop runtime smoke test has been run. Compiler binaries and the Visual Studio C++ component were found; `cl.exe` is not exposed through the current shell's PATH. `cargo tauri --version` reports `tauri-cli 2.12.4`. A global Node update requested Administrator consent and was not completed; project work uses a separate portable Node toolchain.
 
-## Before the first build
+## Current native scanner checks (2026-11-15)
 
-1. Recheck `git status`, current branch, remote, history, configured local identity, and authenticated push account.
-2. Decide whether to retain portable Node 26 or retry a supported system LTS update; project package manager is npm; generate exactly one lockfile.
-3. Verify C++ workload/Windows SDK discovery by building the scaffold.
-4. Review scaffold-selected Tauri, React, Vite, and TypeScript versions before dependency installation.
-5. Evaluate SQLite libraries/licenses. `sqlx` is a candidate for Rust-owned async access and embedded migrations; do not add it until MSRV, Tauri runtime compatibility, and Windows build have been checked.
+- `cargo fmt --manifest-path app/src-tauri/Cargo.toml -- --check` — passed.
+- `cargo test --manifest-path app/src-tauri/Cargo.toml --offline` — passed: 8 synthetic scanner unit tests; no real Steam account or live Steam interface was used.
+- `cargo clippy --manifest-path app/src-tauri/Cargo.toml --all-targets --all-features --offline -- -D warnings` — passed.
+- `npm run build` with portable Node `26.13.1` / npm `11.20.0` — passed (`tsc` and Vite production build).
+- `cargo tauri build --no-bundle` — passed; produced the release executable. Installer bundle and running the UI were not tested.
+
+## Before packaging and runtime smoke testing
+
+1. Recheck `git status`, current branch, remote and history before the next implementation task.
+2. Use the existing local lockfiles and portable Node/npm toolchain; avoid generating a second npm lockfile.
+3. Verify C++ Build Tools and WebView2 at runtime through a Tauri smoke check; create and inspect installer bundles separately.
+4. Review scaffold-selected Tauri, React, Vite, and TypeScript versions and license notices before release.
+5. Evaluate SQLite libraries/licenses before adding persistence; check MSRV, Tauri runtime compatibility, and Windows build behavior.
 6. Resolve Steam data/auth and privacy model before designing real account connection.
 
 ## Planned quality commands
 
-Once package scripts and Rust project structure exist, configure explicit commands for:
+The native Rust target now has unit tests. The frontend currently has `dev`, `build`, `preview`, and `tauri` scripts but no format, lint, typecheck or test scripts. Configure explicit frontend checks and continue native checks for:
 
 - frontend formatting, lint, TypeScript check, unit/component tests, and production build;
 - `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, and `cargo test` as appropriate;
 - Tauri build and Windows packaging smoke checks;
 - migration, import/export, backup/restore, IPC permission, and error-path tests.
 
-Do not run or report these commands until the project defines them. No tests were run in this research phase.
+Do not report a frontend test or lint result until those scripts are configured and run. Phase 1.7 itself did not run tests; the 2026-11-15 checks above are later updates.
 
 ## Git workflow
 

@@ -29,7 +29,7 @@ Steam Achievement Manager (SAM) and ArchiSteamFarm (ASF) are separate products. 
 
 **Do not copy SAM source or assets.** The existing implementation is x86 Windows Forms/.NET Framework, directly loads Steam client internals, reads local Steam cache data, and supports achievement/stat writes. Its implementation does not solve GameVault's documented Web API key/authentication blocker and does not establish Valve support for a third-party companion.
 
-The owner later explicitly directed GameVault to pursue a **read-only** version of SAM discussion points 1–3 (connect to the logged-in client, choose/match games, read achievements). This approves further work on that narrow product direction; it does not approve code/assets reuse, claim Valve permission, or permit setters/resets/stats storage. The technical design and remaining limitations are recorded in [`SAM_READ_ONLY_INTEGRATION.md`](SAM_READ_ONLY_INTEGRATION.md). The zlib license is permissive subject to its notice/modified-source conditions, but it alone does not clear the Steam client interface, undocumented schema format, separate icon assets, policy, security, or compatibility risks.
+The owner later authorized further planning of a **read-only** version of SAM discussion points 1–3 (connect to the logged-in client, choose/match games, read achievements). This does not authorize adapter implementation, code/assets reuse, claim Valve permission, or permit setters/resets/stats storage. The technical design and remaining limitations are recorded in [`SAM_READ_ONLY_INTEGRATION.md`](SAM_READ_ONLY_INTEGRATION.md). The zlib license is permissive subject to its notice/modified-source conditions, but it alone does not clear the Steam client interface, undocumented schema format, separate icon assets, policy, security, or compatibility risks.
 
 Before code, keep the implementation clean-room unless exact-source reuse separately passes file/dependency/asset provenance and license review. The read-only boundary must exclude `SetAchievement`, `ClearAchievement`, `SetStat`, `StoreStats`, `ResetAllStats`, process injection, memory inspection and credential/session-file access. The SAM-hosted `games.xml` is not a complete owned-library source and is not adopted as a GameVault dependency by this review.
 
@@ -57,7 +57,7 @@ Before code, keep the implementation clean-room unless exact-source reuse separa
 
 ## Overall gate and remaining audit limits
 
-- No SAM source or assets are approved for reuse. The owner has authorized only the read-only SAM-inspired points 1–3 as a direction to pursue. Achievement unlock/clear/reset, stat editing/storage, account automation, and anti-cheat-sensitive actions remain out of scope.
+- No SAM source or assets are approved for reuse. The owner has authorized planning only for the read-only SAM-inspired points 1–3. Adapter implementation remains gated by ADR-007. Achievement unlock/clear/reset, stat editing/storage, account automation, and anti-cheat-sensitive actions remain out of scope.
 - No code or assets from ASF or SAM are present in GameVault.
 - Remaining before any reuse: full dependency/asset inventory for the exact files proposed, a fuller source audit, current Steam policy review, license compatibility review, and explicit owner approval.
 
