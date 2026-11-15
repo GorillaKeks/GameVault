@@ -26,11 +26,11 @@ The Rust native library, frontend production bundle, and unbundled Tauri release
 ## Current native scanner checks (2026-11-15)
 
 - `cargo fmt --manifest-path app/src-tauri/Cargo.toml -- --check` — passed.
-- `cargo test --manifest-path app/src-tauri/Cargo.toml --offline` — passed: 17 unit tests, including synthetic scanner/icon cases and mock achievement-state mapping. No real Steam account or live Steam interface was used.
+- `cargo test --manifest-path app/src-tauri/Cargo.toml --offline` — passed: 17 unit tests, including synthetic scanner/icon cases and mock achievement-state mapping. Automated tests do not use a real Steam account or live interface. A separate user-triggered smoke read later succeeded for Dune: Awakening (74 achievements, 8 earned); see ADR-007.
 - `cargo clippy --manifest-path app/src-tauri/Cargo.toml --all-targets --all-features --offline -- -D warnings` — passed.
 - TypeScript compiler and Vite production build — passed using the installed project binaries. `npm run build` could not be invoked in the current shell because npm is not on PATH.
 - `cargo tauri build --no-bundle --debug --config '{"build":{"beforeBuildCommand":""}}'` — passed; the production frontend was built separately first. Installer bundle and running the UI were not tested.
-- `read_game_achievements` has only synthetic/mock mapping tests. No live Steam client, ABI, callback, or account test was run.
+- `read_game_achievements` has synthetic/mock mapping tests. A separate user-triggered live read succeeded for Dune: Awakening, but automated tests do not exercise the native Steam ABI/callbacks and no Steam client build range was validated.
 
 ## Before packaging and runtime smoke testing
 

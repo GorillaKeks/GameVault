@@ -1,6 +1,6 @@
 # GameVault Roadmap
 
-**Status date:** 2026-11-15. Local `main` and `origin/main` point to `01e6feaf697e54df92ce5f0d81e075abd9a5347f`; working-tree changes are uncommitted. The Tauri scaffold includes an experimental per-game read-only Steam-client achievement prototype. It has no live ABI/account validation; Rust tests, frontend production build and unbundled Tauri debug build pass. Installer packaging and runtime smoke testing remain unverified.
+**Status date:** 2026-11-15. Local `main` and `origin/main` last synced at `9d916d518945fc38adfd65b60cab196f24b1da7d`; working-tree changes are uncommitted. The Tauri app includes an experimental per-game read-only Steam-client achievement prototype. One user-triggered live read succeeded for Dune: Awakening (74 achievements, 8 earned) on the owner's machine. Rust tests, frontend production build and unbundled Tauri debug build pass. The exact Steam client build and broader compatibility remain unknown; installer packaging remains unverified.
 
 ## Phase 0 — Repository and initial feasibility baseline (complete)
 
@@ -74,4 +74,4 @@ The 2026-11-12 environment audit found MSVC Build Tools, Windows SDK and WebView
 - Research is separate from implementation; no feature is claimed complete based on a file's presence alone.
 - No API, license, security or compatibility result is claimed without evidence.
 - Phase 1.6 assessment: **CONDITIONAL GO** for continued planning; account library and achievements remain gated by Valve. All four features remain required.
-- The owner has explicitly accepted the residual private-interface risk and authorized a read-only achievement prototype. It has not been live-tested and does not claim Valve support, complete library/playtime coverage, account/stat writes or SAM source reuse.
+- The owner has explicitly accepted the residual private-interface risk and authorized a read-only achievement prototype. One local game/account read has succeeded; it does not claim Valve support, broad client compatibility, complete library/playtime coverage, account/stat writes or SAM source reuse.

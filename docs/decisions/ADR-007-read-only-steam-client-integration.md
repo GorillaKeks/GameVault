@@ -5,17 +5,17 @@
 
 ## Context
 
-The owner authorized further planning of SAM discussion points 1–3 for GameVault: connect to the current Steam client session, select/match games, and display achievement definitions and earned state. This authorization does not authorize adapter implementation. The project remains local-only and strictly read-only. SAM's public source uses `steamclient.dll` versioned interfaces and reads a local `UserGameStatsSchema_<AppID>.bin` cache; it also includes write/reset behavior, which is outside this decision.
+The owner authorized an experimental implementation of SAM discussion points 1–3 for GameVault: connect to the current Steam client session, select/match games, and display achievement definitions and earned state. The authorization accepts unresolved compatibility and policy risks for a prototype only. The project remains local-only and strictly read-only. SAM's public source uses `steamclient.dll` versioned interfaces and reads a local `UserGameStatsSchema_<AppID>.bin` cache; it also includes write/reset behavior, which is outside this decision.
 
 ## Decision
 
-Plan an independently implemented Rust read-only adapter behind the Tauri native boundary. Do not implement or ship it until all implementation gates below are reviewed and pass. If later authorized, it may connect only to the already logged-in local Steam client, operate on explicitly selected/known AppIDs, and read schema/earned state. Do not copy SAM code/assets under this decision. Do not expose setters or call `SetAchievement`, `ClearAchievement`, `SetStat`, `StoreStats`, or `ResetAllStats`. Never inject into a game, inspect process memory, read passwords/cookies/session files, or change Steam/game files.
+Maintain the implemented Rust adapter as an experimental read-only prototype behind the Tauri native boundary. Do not expand or release it until the gates below are reviewed and pass. It may connect only to the already logged-in local Steam client, operate on explicitly selected/known AppIDs, and read definitions/earned state. Do not copy SAM code/assets under this decision. Do not expose setters or call `SetAchievement`, `ClearAchievement`, `SetStat`, `StoreStats`, or `ResetAllStats`. Never inject into a game, inspect process memory, read passwords/cookies/session files, or change Steam/game files.
 
-This decision authorizes planning a technically unsupported path; it does not establish Valve authorization, endorsement, a public compatibility contract, or complete feature coverage. See [`../SAM_READ_ONLY_INTEGRATION.md`](../SAM_READ_ONLY_INTEGRATION.md) for the per-step analysis and failure limits.
+This decision records owner-accepted experimentation only; it does not establish Valve authorization, endorsement, a public compatibility contract, or complete feature coverage. See [`../SAM_READ_ONLY_INTEGRATION.md`](../SAM_READ_ONLY_INTEGRATION.md) for the per-step analysis and failure limits.
 
 ## Implementation gates
 
-Before adapter code is written, review and record all of the following:
+Before expanding or releasing the adapter, review and record all of the following:
 
 1. Current Valve policy and applicable terms for this third-party desktop use; owner direction alone is not Valve permission.
 2. A native-boundary threat review covering DLL loading, interface and callback ABI, path constraints, parsing limits, failure behavior, and prevention of all write/reset calls.
@@ -23,7 +23,7 @@ Before adapter code is written, review and record all of the following:
 4. Deterministic tests using mocks and synthetic schema data, including assertions that no write API is exposed or called. Do not use a real account for risky behavior.
 5. Confirmation that the implementation does not claim complete library, playtime, or achievement coverage where the selected source cannot provide it.
 
-Until these gates pass, work is limited to research, threat modeling, interface design, and test planning. If policy remains unanswered, keep the adapter unimplemented and return with the exact question and evidence needed for an owner decision.
+Until these gates pass, keep the adapter experimental and limit claims to the observed behavior. Unanswered policy questions remain documented; do not infer Valve approval or broader support.
 
 ## Owner risk acceptance and gate review (2026-11-15)
 
@@ -32,9 +32,9 @@ After the remaining limitations were explained, the owner explicitly accepted th
 | Gate | Review result | Evidence / remaining requirement |
 |---|---|---|
 | 1. Valve policy for a third-party local desktop client | **OWNER ACCEPTED RESIDUAL RISK; NOT CLEARED BY VALVE** | Current Valve docs describe Steamworks stats/achievements in the game-integrated SDK context and document Web API alternatives. They do not establish permission or support for GameVault directly loading private/versioned client interfaces. No written Valve answer for this use is recorded. This remains an evidence gap, not a claim that Valve has expressly prohibited it. |
-| 2. Native-boundary threat review | **PROTOTYPE REVIEW COMPLETE; LIVE/RELEASE REVIEW OPEN** | The prototype loads only canonical `steamclient.dll` under a validated Steam root, requests exact interface IDs, limits requests and returned counts/text, uses typed IPC, releases the pipe/library with RAII, and defines no setter/reset calls. It does not inspect process memory, inject into games, read credentials, or write Steam files. Raw ABI pointers and Steam-owned strings remain inherently unsafe; the concrete integration has not been exercised against Steam. Review again before release. |
-| 3. Steam client compatibility set | **PINNED INTERFACE IDs; CLIENT BUILDS UNSUPPORTED/UNVERIFIED** | The prototype requests x64 Windows interfaces `SteamClient018`, `SteamUser012` and `SteamUserStats013`; missing IDs fail closed. No Steam client build range or ABI guarantee is established, and no live client was probed. This is an experimental target, not a support matrix. |
-| 4. Deterministic adapter tests | **MOCK MAPPING TESTS PASS; NATIVE ABI TESTS OPEN** | `cargo test --offline` passes 17 Rust tests, including synthetic read-only achievement fixtures for earned/locked mapping, partial-state failure and oversized lists. They do not validate the real DLL ABI, callback layout or version behavior. No real account or live interface was used. |
+| 2. Native-boundary threat review | **ONE LIVE READ SUCCEEDED; RELEASE REVIEW OPEN** | Earlier helper attempts exited with `0xc0000374` during teardown and `0xc0000005` during callback polling. The incorrect `ISteamUser::GetSteamID` signature was corrected to use an output pointer; the helper is isolated and callback steps remain traced. The owner-provided result now confirms a live read for Dune: Awakening (AppID 1172710): 74 achievements returned, 8 earned. This is one successful machine/game observation, not release validation. |
+| 3. Steam client compatibility set | **ONE LOCAL BUILD OBSERVED; NO COMPATIBILITY RANGE** | The prototype requests x64 Windows interfaces `SteamClient018`, `SteamUser012` and `SteamUserStats013`; the native stats lookup uses `STEAMUSERSTATS_INTERFACE_VERSION013`. One live read succeeded on the owner's installed client, but the exact Steam client build was not captured. Missing IDs fail closed. No client build range or ABI guarantee is established. |
+| 4. Deterministic adapter tests | **MOCK MAPPING TESTS PASS; NATIVE ABI TESTS OPEN** | `cargo test --offline` passes 17 Rust tests, including synthetic read-only achievement fixtures for earned/locked mapping, partial-state failure and oversized lists. They do not validate the real DLL ABI or callback behavior. Separately, one user-triggered live read succeeded for Dune: Awakening; this does not replace automated native-boundary testing. |
 | 5. Coverage and product claims | **PASS — LIMITED CLAIMS** | UI requests achievements per locally installed game, displays unavailable explicitly, and does not claim complete account library or playtime. Per-game counts are shown only after a complete response. Recheck these claims against future changes. |
 
 ### Policy and interface evidence reviewed

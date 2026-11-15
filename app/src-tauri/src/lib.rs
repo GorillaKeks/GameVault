@@ -1,9 +1,14 @@
 use serde::Serialize;
 use std::{
     collections::BTreeSet,
-    env, fs,
+    env,
+    ffi::OsStr,
+    fs,
     io::{self, Read},
     path::{Path, PathBuf},
+    process::{Command, Stdio},
+    thread,
+    time::{Duration, Instant},
 };
 
 mod steam_achievements;
@@ -15,6 +20,10 @@ const MAX_LIBRARY_COUNT: usize = 64;
 const MAX_DIRECTORY_ENTRIES_PER_SCAN: usize = 65_536;
 const MAX_MANIFESTS_PER_SCAN: usize = 4_096;
 const MAX_ICON_DIRECTORY_ENTRIES: usize = 128;
+const STEAM_WORKER_ARGUMENT: &str = "--gamevault-steam-worker";
+const STEAM_WORKER_TIMEOUT: Duration = Duration::from_secs(25);
+const MAX_STEAM_WORKER_OUTPUT: u64 = 32 * 1_024 * 1_024;
+const MAX_STEAM_WORKER_TRACE: u64 = 65_536;
 
 #[derive(Serialize)]
 struct GameCandidate {
@@ -401,15 +410,8 @@ fn inspect_local_steam() -> SteamInspection {
     inspect_roots(candidate_roots())
 }
 
-#[tauri::command]
-fn read_game_achievements(app_id: String) -> steam_achievements::AchievementReadResult {
-    let Some(parsed_app_id) = steam_achievements::validate_app_id(&app_id) else {
-        return steam_achievements::AchievementReadResult {
-            status: "unavailable",
-            achievements: Vec::new(),
-            message: Some("Ungültige Steam-App-ID.".to_owned()),
-        };
-    };
+fn installed_steam_root_for_app(app_id: &str) -> Option<PathBuf> {
+    let parsed_app_id = steam_achievements::validate_app_id(app_id)?;
     for steam_root in candidate_roots() {
         let discovery = library_roots(&steam_root);
         let installed_here = discovery.roots.iter().any(|library_root| {
@@ -417,19 +419,175 @@ fn read_game_achievements(app_id: String) -> steam_achievements::AchievementRead
                 return false;
             };
             let manifest = steamapps.join(format!("appmanifest_{parsed_app_id}.acf"));
-            manifest_fields(&manifest, &app_id, &steamapps).is_some()
+            manifest_fields(&manifest, app_id, &steamapps).is_some()
         });
         if installed_here {
-            return steam_achievements::read_for_app(&steam_root, &app_id);
+            return Some(steam_root);
         }
     }
-    steam_achievements::AchievementReadResult {
-        status: "unavailable",
-        achievements: Vec::new(),
-        message: Some(
-            "Das Spiel ist nicht in einer lokal geprüften Steam-Bibliothek installiert.".to_owned(),
-        ),
+    None
+}
+
+fn run_steam_read_worker(
+    steam_root: &Path,
+    app_id: &str,
+) -> Result<steam_achievements::AchievementReadResult, String> {
+    let executable = env::current_exe()
+        .map_err(|_| "GameVault konnte die Lesehilfe nicht starten.".to_owned())?;
+    let mut child = Command::new(executable)
+        .arg(STEAM_WORKER_ARGUMENT)
+        .arg(steam_root)
+        .arg(app_id)
+        .env("SteamAppId", app_id)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|_| "GameVault konnte die isolierte Steam-Lesehilfe nicht starten.".to_owned())?;
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| "Die Steam-Lesehilfe lieferte keine Antwort.".to_owned())?;
+    let mut stderr = child
+        .stderr
+        .take()
+        .ok_or_else(|| "Die Steam-Lesehilfe lieferte keine Diagnose.".to_owned())?;
+    let reader = thread::spawn(move || {
+        let mut output = Vec::new();
+        stdout
+            .take(MAX_STEAM_WORKER_OUTPUT + 1)
+            .read_to_end(&mut output)?;
+        Ok::<_, io::Error>(output)
+    });
+    let deadline = Instant::now() + STEAM_WORKER_TIMEOUT;
+    loop {
+        let status = match child.try_wait() {
+            Ok(status) => status,
+            Err(_) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                let _ = reader.join();
+                return Err(
+                    "GameVault konnte den Status der Steam-Lesehilfe nicht prüfen.".to_owned(),
+                );
+            }
+        };
+        if let Some(status) = status {
+            let output = reader
+                .join()
+                .map_err(|_| "Die isolierte Steam-Lesehilfe wurde unerwartet beendet.".to_owned())?
+                .map_err(|_| {
+                    "GameVault konnte die Antwort der Steam-Lesehilfe nicht lesen.".to_owned()
+                })?;
+            let mut trace = String::new();
+            stderr
+                .by_ref()
+                .take(MAX_STEAM_WORKER_TRACE)
+                .read_to_string(&mut trace)
+                .map_err(|_| {
+                    "GameVault konnte die Diagnose der Steam-Lesehilfe nicht lesen.".to_owned()
+                })?;
+            if !status.success() {
+                let exit_code = status
+                    .code()
+                    .map(|code| format!("{:08X}", code as u32))
+                    .unwrap_or_else(|| "unbekannt".to_owned());
+                let last_stage = trace
+                    .lines()
+                    .filter_map(|line| line.strip_prefix("steam_worker_stage="))
+                    .next_back()
+                    .unwrap_or("nicht protokolliert");
+                return Err(format!(
+                    "Die isolierte Steam-Lesehilfe ist abgestürzt (Code {exit_code}); GameVault blieb davon getrennt. Letzter protokollierter Schritt: {last_stage}."
+                ));
+            }
+            if output.len() as u64 > MAX_STEAM_WORKER_OUTPUT {
+                return Err("Die Steam-Lesehilfe lieferte eine zu große Antwort.".to_owned());
+            }
+            return serde_json::from_slice(&output)
+                .map_err(|_| "Die Steam-Lesehilfe lieferte eine ungültige Antwort.".to_owned());
+        }
+        if Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            let _ = reader.join();
+            return Err(
+                "Die isolierte Steam-Lesehilfe hat nicht rechtzeitig geantwortet.".to_owned(),
+            );
+        }
+        thread::sleep(Duration::from_millis(20));
     }
+}
+
+#[tauri::command]
+fn read_game_achievements(app_id: String) -> steam_achievements::AchievementReadResult {
+    if steam_achievements::validate_app_id(&app_id).is_none() {
+        return steam_achievements::AchievementReadResult {
+            status: "unavailable".to_owned(),
+            achievements: Vec::new(),
+            message: Some("Ungültige Steam-App-ID.".to_owned()),
+        };
+    }
+    let Some(steam_root) = installed_steam_root_for_app(&app_id) else {
+        return steam_achievements::AchievementReadResult {
+            status: "unavailable".to_owned(),
+            achievements: Vec::new(),
+            message: Some(
+                "Das Spiel ist nicht in einer lokal geprüften Steam-Bibliothek installiert."
+                    .to_owned(),
+            ),
+        };
+    };
+    match run_steam_read_worker(&steam_root, &app_id) {
+        Ok(result) => result,
+        Err(message) => steam_achievements::AchievementReadResult {
+            status: "unavailable".to_owned(),
+            achievements: Vec::new(),
+            message: Some(message),
+        },
+    }
+}
+
+pub fn run_steam_worker_mode() -> bool {
+    let mut arguments = env::args_os();
+    let _executable = arguments.next();
+    if arguments.next().as_deref() != Some(OsStr::new(STEAM_WORKER_ARGUMENT)) {
+        return false;
+    }
+    let root_argument = arguments.next().map(PathBuf::from);
+    let app_id = arguments.next().and_then(|value| value.into_string().ok());
+    let result = match (root_argument, app_id) {
+        (Some(root_argument), Some(app_id))
+            if steam_achievements::validate_app_id(&app_id).is_some() =>
+        {
+            let canonical_argument = root_argument.canonicalize().ok();
+            match (canonical_argument, installed_steam_root_for_app(&app_id)) {
+                (Some(argument), Some(installed_root)) if argument == installed_root => {
+                    steam_achievements::read_for_app(&installed_root, &app_id)
+                }
+                _ => steam_achievements::AchievementReadResult {
+                    status: "unavailable".to_owned(),
+                    achievements: Vec::new(),
+                    message: Some(
+                        "Das lokale Steam-Spiel konnte nicht erneut validiert werden.".to_owned(),
+                    ),
+                },
+            }
+        }
+        _ => steam_achievements::AchievementReadResult {
+            status: "unavailable".to_owned(),
+            achievements: Vec::new(),
+            message: Some("Ungültige lokale Steam-Leseanfrage.".to_owned()),
+        },
+    };
+    match serde_json::to_vec(&result) {
+        Ok(output) => {
+            use std::io::Write;
+            let _ = io::stdout().write_all(&output);
+        }
+        Err(_) => std::process::exit(2),
+    }
+    true
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

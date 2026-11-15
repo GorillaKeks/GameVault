@@ -112,4 +112,4 @@ See [`LOCAL_FIRST_ARCHITECTURE.md`](LOCAL_FIRST_ARCHITECTURE.md), [`LOCAL_STEAM_
 
 ## Build readiness
 
-Windows prerequisite executables and runtime were found, but no Tauri app build has been performed. The current Node 24.22.1 installation is behind the 24.22.3 security release published 2026-11-11. SQLite CLI is absent but not required for an embedded library; no Rust SQLite dependency has been selected. Treat environment as **prerequisites mostly present; compilation unverified**. See [`DEVELOPMENT.md`](DEVELOPMENT.md).
+The unbundled Tauri debug executable built and launched successfully on 2026-11-15. One user-triggered live achievement read succeeded for Dune: Awakening; no Steam client build range is established. Installer packaging remains unverified. SQLite CLI is absent but not required for an embedded library; no Rust SQLite dependency has been selected. See [`DEVELOPMENT.md`](DEVELOPMENT.md).

@@ -1,9 +1,9 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 const MAX_ACHIEVEMENTS: usize = 1_024;
 const MAX_TEXT_BYTES: usize = 2_048;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Achievement {
     pub id: String,
     pub name: String,
@@ -12,9 +12,9 @@ pub struct Achievement {
     pub unlock_time: Option<u32>,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AchievementReadResult {
-    pub status: &'static str,
+    pub status: String,
     pub achievements: Vec<Achievement>,
     pub message: Option<String>,
 }
@@ -53,7 +53,7 @@ fn collect_achievements(
 impl AchievementReadResult {
     fn unavailable(message: &'static str) -> Self {
         Self {
-            status: "unavailable",
+            status: "unavailable".to_owned(),
             achievements: Vec::new(),
             message: Some(message.to_owned()),
         }
@@ -75,10 +75,10 @@ mod windows_client {
         collect_achievements,
     };
     use std::{
-        ffi::{CStr, CString, OsStr},
+        ffi::{CStr, CString},
         os::windows::ffi::OsStrExt,
         path::Path,
-        ptr::{self, null_mut},
+        ptr::null_mut,
         sync::Mutex,
         thread,
         time::{Duration, Instant},
@@ -86,7 +86,7 @@ mod windows_client {
 
     const STEAM_CLIENT_VERSION: &str = "SteamClient018";
     const STEAM_USER_VERSION: &str = "SteamUser012";
-    const STEAM_USER_STATS_VERSION: &str = "SteamUserStats013";
+    const STEAM_USER_STATS_VERSION: &str = "STEAMUSERSTATS_INTERFACE_VERSION013";
     const USER_STATS_RECEIVED_CALLBACK: i32 = 1_101;
     const RESULT_OK: i32 = 1;
     const CALLBACK_TIMEOUT: Duration = Duration::from_secs(12);
@@ -94,7 +94,11 @@ mod windows_client {
 
     static STEAM_CLIENT_LOCK: Mutex<()> = Mutex::new(());
 
-    #[repr(C)]
+    fn trace_stage(stage: &'static str) {
+        eprintln!("steam_worker_stage={stage}");
+    }
+
+    #[repr(C, packed(1))]
     struct CallbackMessage {
         user: i32,
         callback_id: i32,
@@ -102,12 +106,18 @@ mod windows_client {
         parameter_size: i32,
     }
 
-    #[repr(C)]
+    #[repr(C, packed(1))]
     struct UserStatsReceived {
         game_id: u64,
         result: i32,
         user_id: u64,
     }
+
+    #[cfg(target_pointer_width = "64")]
+    const _: () = {
+        assert!(std::mem::size_of::<CallbackMessage>() == 20);
+        assert!(std::mem::size_of::<UserStatsReceived>() == 20);
+    };
 
     type CreateInterface = unsafe extern "system" fn(*const i8, *mut i32) -> *mut std::ffi::c_void;
     type GetCallback = unsafe extern "system" fn(i32, *mut CallbackMessage, *mut i32) -> u8;
@@ -122,35 +132,6 @@ mod windows_client {
         ) -> *mut std::ffi::c_void;
         fn GetProcAddress(module: *mut std::ffi::c_void, name: *const i8) -> *mut std::ffi::c_void;
         fn FreeLibrary(module: *mut std::ffi::c_void) -> i32;
-        fn SetEnvironmentVariableW(name: *const u16, value: *const u16) -> i32;
-    }
-
-    struct EnvironmentRestore(Option<Vec<u16>>);
-
-    impl EnvironmentRestore {
-        fn set_app_id(app_id: u32) -> Result<Self, ()> {
-            let old = std::env::var_os("SteamAppId")
-                .map(|value| value.encode_wide().chain(Some(0)).collect());
-            let name = wide("SteamAppId");
-            let value = wide(&app_id.to_string());
-            // SAFETY: both strings are NUL-terminated and remain alive for this call.
-            let set = unsafe { SetEnvironmentVariableW(name.as_ptr(), value.as_ptr()) };
-            if set == 0 {
-                return Err(());
-            }
-            Ok(Self(old))
-        }
-    }
-
-    impl Drop for EnvironmentRestore {
-        fn drop(&mut self) {
-            let name = wide("SteamAppId");
-            let old = self.0.as_ref().map_or(ptr::null(), |value| value.as_ptr());
-            // SAFETY: the name and optional prior value are NUL-terminated and valid for this call.
-            unsafe {
-                SetEnvironmentVariableW(name.as_ptr(), old);
-            }
-        }
     }
 
     struct ModuleHandle(*mut std::ffi::c_void);
@@ -158,6 +139,7 @@ mod windows_client {
     impl Drop for ModuleHandle {
         fn drop(&mut self) {
             if !self.0.is_null() {
+                trace_stage("free_library");
                 unsafe {
                     FreeLibrary(self.0);
                 }
@@ -175,12 +157,14 @@ mod windows_client {
         fn drop(&mut self) {
             unsafe {
                 if self.user > 0 {
+                    trace_stage("release_user");
                     vtable_method::<unsafe extern "system" fn(*mut std::ffi::c_void, i32, i32)>(
                         self.client,
                         4,
                     )(self.client, self.pipe, self.user);
                 }
                 if self.pipe > 0 {
+                    trace_stage("release_pipe");
                     vtable_method::<unsafe extern "system" fn(*mut std::ffi::c_void, i32) -> u8>(
                         self.client,
                         1,
@@ -197,18 +181,16 @@ mod windows_client {
         stats: *mut std::ffi::c_void,
         get_callback: GetCallback,
         free_callback: FreeLastCallback,
-        _environment: EnvironmentRestore,
     }
 
     impl SteamSession {
-        fn connect(root: &Path, app_id: u32) -> Result<Self, &'static str> {
+        fn connect(root: &Path) -> Result<Self, &'static str> {
+            trace_stage("validate_architecture");
             if std::mem::size_of::<usize>() != 8 {
                 return Err("Nur 64-Bit-Steam-Clients werden unterstützt.");
             }
-            let _environment = EnvironmentRestore::set_app_id(app_id)
-                .map_err(|_| "Die Steam-App-ID konnte nicht gesetzt werden.")?;
             let library = root
-                .join("steamclient.dll")
+                .join("steamclient64.dll")
                 .canonicalize()
                 .map_err(|_| "Steam-Client-Bibliothek nicht gefunden.")?;
             if !library.starts_with(root) || !library.is_file() {
@@ -227,6 +209,7 @@ mod windows_client {
             if module.is_null() {
                 return Err("Steam-Client-Bibliothek konnte nicht geladen werden.");
             }
+            trace_stage("steam_dll_loaded");
             let module = ModuleHandle(module);
             let create = unsafe { symbol::<CreateInterface>(module.0, b"CreateInterface\0") }
                 .ok_or("Steam-Client-Schnittstelle fehlt.")?;
@@ -236,6 +219,7 @@ mod windows_client {
                 unsafe { symbol::<FreeLastCallback>(module.0, b"Steam_FreeLastCallback\0") }
                     .ok_or("Steam-Callback-Freigabe fehlt.")?;
             let client = unsafe { create_interface(create, STEAM_CLIENT_VERSION)? };
+            trace_stage("steam_client_interface_created");
             let pipe = unsafe {
                 vtable_method::<unsafe extern "system" fn(*mut std::ffi::c_void) -> i32>(client, 0)(
                     client,
@@ -244,6 +228,7 @@ mod windows_client {
             if pipe <= 0 {
                 return Err("Steam konnte keine Client-Pipe bereitstellen.");
             }
+            trace_stage("steam_pipe_created");
             let mut connection = PipeHandle {
                 client,
                 pipe,
@@ -257,6 +242,7 @@ mod windows_client {
             if steam_user <= 0 {
                 return Err("Keine angemeldete Steam-Sitzung gefunden.");
             }
+            trace_stage("global_user_connected");
             connection.user = steam_user;
             let user_version = CString::new(STEAM_USER_VERSION).expect("static interface version");
             let stats_version =
@@ -272,6 +258,7 @@ mod windows_client {
                 >(client, 5);
                 getter(client, steam_user, pipe, user_version.as_ptr())
             };
+            trace_stage("steam_user_interface_requested");
             let stats = unsafe {
                 let getter = vtable_method::<
                     unsafe extern "system" fn(
@@ -283,8 +270,16 @@ mod windows_client {
                 >(client, 13);
                 getter(client, steam_user, pipe, stats_version.as_ptr())
             };
-            if user.is_null() || stats.is_null() {
-                return Err("Die erwarteten Steam-Lese-Schnittstellen sind nicht verfügbar.");
+            trace_stage("steam_user_stats_interface_requested");
+            if user.is_null() {
+                return Err(
+                    "Steam stellt die angeforderte Schnittstelle SteamUser012 nicht bereit.",
+                );
+            }
+            if stats.is_null() {
+                return Err(
+                    "Steam stellt die angeforderte Schnittstelle SteamUserStats013 nicht bereit.",
+                );
             }
             Ok(Self {
                 connection,
@@ -293,20 +288,21 @@ mod windows_client {
                 stats,
                 get_callback,
                 free_callback,
-                _environment,
             })
         }
 
         fn read(&mut self, app_id: u32) -> Result<Vec<Achievement>, &'static str> {
-            let steam_id = unsafe {
-                vtable_method::<unsafe extern "system" fn(*mut std::ffi::c_void) -> u64>(
+            let mut steam_id = 0u64;
+            unsafe {
+                vtable_method::<unsafe extern "system" fn(*mut std::ffi::c_void, *mut u64)>(
                     self.user_interface,
                     2,
-                )(self.user_interface)
-            };
+                )(self.user_interface, &mut steam_id);
+            }
             if steam_id == 0 {
                 return Err("Steam konnte die angemeldete Steam-ID nicht bereitstellen.");
             }
+            trace_stage("steam_id_read");
             let request = unsafe {
                 vtable_method::<unsafe extern "system" fn(*mut std::ffi::c_void, u64) -> u64>(
                     self.stats, 15,
@@ -315,7 +311,9 @@ mod windows_client {
             if request == 0 {
                 return Err("Steam hat die Leseanfrage für Errungenschaften abgelehnt.");
             }
+            trace_stage("user_stats_request_sent");
             self.wait_for_stats(app_id)?;
+            trace_stage("user_stats_callback_received");
             collect_achievements(self)
         }
 
@@ -329,14 +327,21 @@ mod windows_client {
                     parameter_size: 0,
                 };
                 let mut call = 0i32;
+                trace_stage("before_callback_poll");
                 let received = unsafe {
                     (self.get_callback)(self.connection.pipe, &mut message, &mut call) != 0
                 };
+                trace_stage(if received {
+                    "callback_poll_received"
+                } else {
+                    "callback_poll_empty"
+                });
                 if !received {
                     thread::sleep(Duration::from_millis(20));
                     continue;
                 }
                 let mut matched = None;
+                trace_stage("before_callback_inspect");
                 if message.callback_id == USER_STATS_RECEIVED_CALLBACK
                     && !message.parameter.is_null()
                     && message.parameter_size as usize >= std::mem::size_of::<UserStatsReceived>()
@@ -347,10 +352,13 @@ mod windows_client {
                         matched = Some(payload.result);
                     }
                 }
+                trace_stage("before_callback_free");
                 unsafe {
                     (self.free_callback)(self.connection.pipe);
                 }
+                trace_stage("callback_freed");
                 if let Some(result) = matched {
+                    trace_stage("user_stats_callback_matched");
                     return if result == RESULT_OK {
                         Ok(())
                     } else {
@@ -369,6 +377,7 @@ mod windows_client {
                     self.stats, 13,
                 )(self.stats)
             };
+            trace_stage("achievement_count_read");
             usize::try_from(count)
                 .map_err(|_| "Steam lieferte eine ungültige Errungenschaftsliste.")
         }
@@ -381,6 +390,7 @@ mod windows_client {
                     self.stats, 14,
                 )(self.stats, index)
             };
+            trace_stage("achievement_id_read");
             unsafe { read_native_text(name_ptr) }
                 .ok_or("Steam lieferte ungültige Errungenschaftsdaten.")
         }
@@ -402,10 +412,16 @@ mod windows_client {
             if unsafe { get(self.stats, id.as_ptr(), &mut achieved, &mut unlock_time) } == 0 {
                 return Err("Steam konnte den Status einer Errungenschaft nicht lesen.");
             }
+            trace_stage("achievement_state_read");
             Ok((achieved != 0, unlock_time))
         }
 
         fn attribute(&mut self, id: &str, key: &str) -> Option<String> {
+            trace_stage(if key == "name" {
+                "achievement_name_read"
+            } else {
+                "achievement_description_read"
+            });
             unsafe { display_attribute(self.stats, id, key) }
         }
     }
@@ -421,11 +437,10 @@ mod windows_client {
                 "Steam-Integration ist derzeit nicht verfügbar.",
             );
         };
-        let result =
-            SteamSession::connect(root, app_id).and_then(|mut session| session.read(app_id));
+        let result = SteamSession::connect(root).and_then(|mut session| session.read(app_id));
         match result {
             Ok(achievements) => AchievementReadResult {
-                status: "available",
+                status: "available".to_owned(),
                 achievements,
                 message: None,
             },
@@ -492,10 +507,6 @@ mod windows_client {
         }
         let text = std::str::from_utf8(bytes).ok()?.trim();
         (!text.is_empty()).then(|| text.to_owned())
-    }
-
-    fn wide(value: &str) -> Vec<u16> {
-        OsStr::new(value).encode_wide().chain(Some(0)).collect()
     }
 }
 

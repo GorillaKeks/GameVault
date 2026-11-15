@@ -28,7 +28,7 @@ No telemetry, analytics, account service, or network data sharing is approved by
 
 The prototype remains read-only. The scanner now caps `libraryfolders.vdf` at 64 KiB, limits candidate libraries to 64, limits total directory entries to 65,536 and manifest files to 4,096 per scan, and caps each manifest at 1 MiB. Steam and library roots, `steamapps`, and manifest files are canonicalized; linked `steamapps` or manifest paths that resolve outside their expected parent are rejected. Absolute Steam-root and manifest paths were removed from the IPC DTO, and the UI reports when a scan is incomplete.
 
-Seventeen Rust tests now cover manifest/icon scanning and synthetic read-only achievement mapping (earned/locked, partial-state failure, app-ID validation and count limits). `cargo test --offline`, `cargo fmt --check` and Clippy pass. The achievement tests do not validate the native Steam DLL ABI or callbacks; no real account/client was used. Add explicit symlink-escape and directory-entry-limit scanner cases before increasing scanner scope.
+Seventeen Rust tests cover manifest/icon scanning and synthetic read-only achievement mapping (earned/locked, partial-state failure, app-ID validation and count limits); they do not validate the native Steam DLL ABI or callbacks. Earlier helper attempts crashed with `0xc0000374` and `0xc0000005`; the incorrect `GetSteamID` signature was corrected. The owner-provided result confirms one successful live read for Dune: Awakening (74 total, 8 earned). The exact Steam build is unknown, so compatibility remains unverified beyond that machine/game observation. Add explicit symlink-escape and directory-entry-limit scanner cases before increasing scanner scope.
 
 ## Network and external data
 
