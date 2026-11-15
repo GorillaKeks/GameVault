@@ -5,7 +5,7 @@
 ## Goals and constraints
 
 - Windows desktop, Steam only for v1.
-- Local-first Steam integration. Owner has approved planning only for a narrow SAM-inspired read-only Steam client/schema path; implementation is gated by ADR-007 and no writes are allowed.
+- Local-first Steam integration. An experimental per-game read-only Steam-client achievement path is owner-authorized under explicit risk acceptance; see ADR-007. No writes are allowed and the private interfaces are not Valve-supported.
 - Do not make account linking or Steam data availability assumptions before the API access gate is cleared.
 - Keep Steam integration isolated without introducing a general multi-platform plugin system.
 - Keep all frontend-to-native operations explicit and narrowly scoped.
@@ -17,7 +17,7 @@ React + TypeScript UI
         │ typed DTOs over Tauri IPC
         ▼
 Rust application layer ───── Steam Web API adapter (only after Valve clearance)
-        │                     Steam client/cache adapter (planning candidate; implementation gated)
+        │                     Steam client achievement adapter (experimental; compatibility unverified)
         │
         ├── domain and progress calculations
         ├── repository / migration layer
@@ -44,7 +44,7 @@ docs/                         decisions, research, security and user docs
 - **React UI:** rendering, accessible interaction, view state, and display of explicit unavailable/private/error states. No API keys, direct SQLite access, or raw filesystem authority.
 - **Tauri commands:** small typed operations such as reading cached library data or requesting a refresh. Validate every parameter and returned DTO. Avoid generic command dispatch and arbitrary path access.
 - **Rust application layer:** orchestration, validation, domain calculations, throttling/timeouts, error mapping, and secrets boundary if an approved flow later requires secrets.
-- **Steam adapters:** keep documented Web API calls separate from a possible SAM-inspired local adapter, authorized for planning only. If later implemented after ADR-007 gates pass, it would be limited to the logged-in Steam client, known AppIDs and achievement reads/schema. It must not inject into games, inspect processes/memory, read credentials/session files, or call write/reset methods. Unknown interfaces or schemas fail closed. See [`SAM_READ_ONLY_INTEGRATION.md`](SAM_READ_ONLY_INTEGRATION.md) and [ADR-007](decisions/ADR-007-read-only-steam-client-integration.md).
+- **Steam adapters:** keep documented Web API calls separate from the experimental SAM-inspired local adapter. The current prototype is limited to the logged-in Steam client, locally installed AppIDs and achievement reads. It must not inject into games, inspect processes/memory, read credentials/session files, or call write/reset methods. Unknown interfaces or incomplete results fail closed. No live client compatibility is verified. See [`SAM_READ_ONLY_INTEGRATION.md`](SAM_READ_ONLY_INTEGRATION.md) and [ADR-007](decisions/ADR-007-read-only-steam-client-integration.md).
 - **Storage:** SQLite behind Rust repository methods. Use schema migrations, parameterized statements, transactions, stable identifiers, and backup/restore verification. Store a minimal cache and distinguish remote facts from local user annotations.
 - **Logging:** structured and useful for diagnosis, but redact account identifiers where unnecessary and never log API keys, credentials, tokens, cookies, or full profile payloads.
 
@@ -66,7 +66,7 @@ This is a discussion model, not an implementation decision. Do not treat missing
 
 ## Integration and auth design
 
-The owner explicitly prohibits a GameVault backend/server. Steam's player-data Web API methods list a user Web API key; user-key registration requires an associated domain, while publisher keys require a Steamworks group and must stay server-side. Steam OpenID is documented as a browser-based website flow, not a validated native desktop callback. Never ship a shared key. The personal user-key route remains under investigation pending Valve confirmation. Separately, the owner has authorized planning only for a read-only Steam client/schema adapter as in [ADR-007](decisions/ADR-007-read-only-steam-client-integration.md); implementation remains gated, and the private interface does not promise complete ownership or playtime data or have verified Valve support. See [Steam integration research](STEAM_INTEGRATION.md) and [feature feasibility](V1_FEATURE_FEASIBILITY.md).
+The owner explicitly prohibits a GameVault backend/server. Steam's player-data Web API methods list a user Web API key; user-key registration requires an associated domain, while publisher keys require a Steamworks group and must stay server-side. Steam OpenID is documented as a browser-based website flow, not a validated native desktop callback. Never ship a shared key. The personal user-key route remains under investigation pending Valve confirmation. Separately, the owner has explicitly accepted the risks for an experimental read-only Steam client adapter as in [ADR-007](decisions/ADR-007-read-only-steam-client-integration.md); it does not promise complete ownership or playtime data and has no verified Valve support or client-build compatibility. See [Steam integration research](STEAM_INTEGRATION.md) and [feature feasibility](V1_FEATURE_FEASIBILITY.md).
 
 Steam OpenID is documented for third-party websites to authenticate a SteamID without collecting a password. A native callback has not been validated, and a website flow would require a server contrary to the owner decision. OpenID identity alone does not guarantee access to private game details or achievements. It is not selected for v1.
 

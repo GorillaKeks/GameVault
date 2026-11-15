@@ -1,6 +1,6 @@
 # Development Environment and Workflow
 
-**Environment inspection:** 2026-11-12. **Scanner and build update:** 2026-11-15. The scaffold exists in `../app`; Rust and npm dependencies are locked, native unit tests and frontend production build pass, and the unbundled Tauri release executable builds. Installer packaging and runtime smoke testing remain open.
+**Environment inspection:** 2026-11-12. **Achievement prototype update:** 2026-11-15. The scaffold exists in `../app`; Rust and npm dependencies are locked, 17 native unit tests pass, the frontend production build passes, and an unbundled Tauri debug executable builds. Installer packaging and live Steam/runtime smoke testing remain open.
 
 Phase 1.7 recheck on 2026-11-12 found Windows 11 Home 25H2 `10.0.26200.9711` (64-bit). See [`FOUNDATION_READINESS.md`](FOUNDATION_READINESS.md) for the current toolchain assessment; [`FEASIBILITY_REVIEW.md`](FEASIBILITY_REVIEW.md) retains the earlier baseline.
 
@@ -26,10 +26,11 @@ The Rust native library, frontend production bundle, and unbundled Tauri release
 ## Current native scanner checks (2026-11-15)
 
 - `cargo fmt --manifest-path app/src-tauri/Cargo.toml -- --check` — passed.
-- `cargo test --manifest-path app/src-tauri/Cargo.toml --offline` — passed: 8 synthetic scanner unit tests; no real Steam account or live Steam interface was used.
+- `cargo test --manifest-path app/src-tauri/Cargo.toml --offline` — passed: 17 unit tests, including synthetic scanner/icon cases and mock achievement-state mapping. No real Steam account or live Steam interface was used.
 - `cargo clippy --manifest-path app/src-tauri/Cargo.toml --all-targets --all-features --offline -- -D warnings` — passed.
-- `npm run build` with portable Node `26.13.1` / npm `11.20.0` — passed (`tsc` and Vite production build).
-- `cargo tauri build --no-bundle` — passed; produced the release executable. Installer bundle and running the UI were not tested.
+- TypeScript compiler and Vite production build — passed using the installed project binaries. `npm run build` could not be invoked in the current shell because npm is not on PATH.
+- `cargo tauri build --no-bundle --debug --config '{"build":{"beforeBuildCommand":""}}'` — passed; the production frontend was built separately first. Installer bundle and running the UI were not tested.
+- `read_game_achievements` has only synthetic/mock mapping tests. No live Steam client, ABI, callback, or account test was run.
 
 ## Before packaging and runtime smoke testing
 

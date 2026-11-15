@@ -1,6 +1,6 @@
 # Security and Privacy Baseline
 
-**Status:** design requirements; no application or security tests exist yet. **Date:** 2026-11-12.
+**Status:** security requirements with an experimental read-only Steam-client prototype; no dedicated security suite or live ABI review exists yet. **Updated:** 2026-11-15.
 
 ## Data and trust boundaries
 
@@ -28,14 +28,14 @@ No telemetry, analytics, account service, or network data sharing is approved by
 
 The prototype remains read-only. The scanner now caps `libraryfolders.vdf` at 64 KiB, limits candidate libraries to 64, limits total directory entries to 65,536 and manifest files to 4,096 per scan, and caps each manifest at 1 MiB. Steam and library roots, `steamapps`, and manifest files are canonicalized; linked `steamapps` or manifest paths that resolve outside their expected parent are rejected. Absolute Steam-root and manifest paths were removed from the IPC DTO, and the UI reports when a scan is incomplete.
 
-Eight synthetic Rust tests cover manifest field parsing/validation, bounded reads, library discovery and candidate limits, oversized VDF handling, incomplete scans, schema-presence display, manifest filename/content ID mismatch, and absence of raw filesystem paths in serialized IPC output. `cargo test --offline` and `cargo fmt --check` pass. Add explicit symlink-escape and directory-entry-limit test cases before increasing scanner scope. This work does not authorize Steam-client calls, achievement-cache parsing, or any undocumented substitute for the blocked account features.
+Seventeen Rust tests now cover manifest/icon scanning and synthetic read-only achievement mapping (earned/locked, partial-state failure, app-ID validation and count limits). `cargo test --offline`, `cargo fmt --check` and Clippy pass. The achievement tests do not validate the native Steam DLL ABI or callbacks; no real account/client was used. Add explicit symlink-escape and directory-entry-limit scanner cases before increasing scanner scope.
 
 ## Network and external data
 
 - HTTPS with standard certificate validation, finite timeouts, bounded response sizes, content-type checks, and safe JSON parsing.
 - Map errors without logging keys or full sensitive responses. Apply conservative request volume and respect any published limits.
 - Treat game names/descriptions and profile strings as untrusted display content; escape/render as text and do not allow active HTML.
-- Do not bypass a private profile or use process/memory inspection. The owner has authorized planning only for the narrow read-only SAM-inspired Steam client/cache path documented in [`SAM_READ_ONLY_INTEGRATION.md`](SAM_READ_ONLY_INTEGRATION.md); treat its interfaces and schema as untrusted/unstable, fail closed, and never call write/reset functions.
+- Do not bypass a private profile or use process/memory inspection. The owner explicitly accepted the risks for the narrow experimental read-only SAM-inspired Steam-client path documented in [`SAM_READ_ONLY_INTEGRATION.md`](SAM_READ_ONLY_INTEGRATION.md); treat all native results as untrusted/unstable, fail closed, and never call write/reset functions. Achievement reads are user-triggered and sent through the signed-in Steam client; no GameVault backend or telemetry endpoint is used.
 
 ## Persistence and user controls
 
@@ -65,13 +65,13 @@ Eight synthetic Rust tests cover manifest field parsing/validation, bounded read
 | Malformed local Steam metadata | Read only known files below configured roots, canonicalize paths, bound size/depth, never log raw content; parser negative tests |
 | Compromised update | Signed update artifacts, protected key, release verification and recovery plan |
 
-No security tests have been run because no application exists.
+No dedicated security test suite has been run. The current unit tests are deterministic and synthetic; they do not exercise the native DLL/callback boundary.
 
 ## Phase 1.5 additions (2026-11-12)
 
 Steam OpenID proves a Steam identity only after a relying party validates the assertion; it is not API authorization. A website flow is not selected because the owner prohibits a GameVault server. Any future web research must still validate exact `return_to`, discovery/signature and nonce replay protection; never trust a callback SteamID before validation.
 
-No Steam Web API key may be embedded in the executable, frontend, source or release artifact. A GameVault backend is prohibited. An individual user key stored in Windows Credential Manager/DPAPI and used directly by Rust is only a candidate pending Valve confirmation. Do not request or persist user keys before approval. The owner has authorized planning only for a read-only SAM-inspired integration using the logged-in Steam client and its local achievement schema cache; policy, native boundary, parser limits, interface/version failures and the no-write guarantee remain implementation gates. See [`SAM_READ_ONLY_INTEGRATION.md`](SAM_READ_ONLY_INTEGRATION.md). Never bind or call achievement/stat mutation or reset functions; never inject into a game, inspect process memory, or read credentials/session files.
+No Steam Web API key may be embedded in the executable, frontend, source or release artifact. A GameVault backend is prohibited. An individual user key stored in Windows Credential Manager/DPAPI and used directly by Rust remains a candidate pending Valve confirmation. Do not request or persist user keys before approval. The read-only Steam-client achievement prototype is owner-authorized despite unresolved policy and compatibility questions; its release remains blocked pending native ABI/callback review and a live compatibility plan. See [`SAM_READ_ONLY_INTEGRATION.md`](SAM_READ_ONLY_INTEGRATION.md). Never bind or call achievement/stat mutation or reset functions; never inject into a game, inspect process memory, or read credentials/session files.
 
 Privacy states must distinguish `private/unavailable`, `unsupported`, `missing`, `stale`, `error`, and numeric zero. Private data, network failure, absent schema and missing installation must not be rendered as empty ownership, zero playtime, all achievements locked or “not installed.” Preserve the last permitted cache with provenance/timestamp and redacted diagnostics.
 

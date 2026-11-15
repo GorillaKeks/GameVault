@@ -6,17 +6,22 @@ use std::{
     path::{Path, PathBuf},
 };
 
+mod steam_achievements;
+
 const MAX_MANIFEST_BYTES: u64 = 1_048_576;
+const MAX_ICON_BYTES: u64 = 16_384;
 const MAX_LIBRARY_FOLDERS_BYTES: u64 = 65_536;
 const MAX_LIBRARY_COUNT: usize = 64;
 const MAX_DIRECTORY_ENTRIES_PER_SCAN: usize = 65_536;
 const MAX_MANIFESTS_PER_SCAN: usize = 4_096;
+const MAX_ICON_DIRECTORY_ENTRIES: usize = 128;
 
 #[derive(Serialize)]
 struct GameCandidate {
     app_id: String,
     name: String,
     schema_available: bool,
+    icon_jpeg: Option<Vec<u8>>,
 }
 
 #[derive(Serialize)]
@@ -205,6 +210,108 @@ fn manifest_fields(
     (fields.0 == expected_app_id).then_some(fields)
 }
 
+fn is_hashed_jpeg(path: &Path) -> bool {
+    let Some(extension) = path.extension().and_then(|value| value.to_str()) else {
+        return false;
+    };
+    let Some(stem) = path.file_stem().and_then(|value| value.to_str()) else {
+        return false;
+    };
+    extension.eq_ignore_ascii_case("jpg")
+        && stem.len() == 40
+        && stem.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
+fn jpeg_dimensions(bytes: &[u8]) -> Option<(u16, u16)> {
+    if bytes.get(..2)? != [0xff, 0xd8] {
+        return None;
+    }
+
+    let mut index = 2;
+    while index < bytes.len() {
+        while bytes.get(index).is_some_and(|byte| *byte != 0xff) {
+            index += 1;
+        }
+        while bytes.get(index).is_some_and(|byte| *byte == 0xff) {
+            index += 1;
+        }
+        let marker = *bytes.get(index)?;
+        index += 1;
+
+        if marker == 0xd9 || marker == 0xda {
+            return None;
+        }
+        if marker == 0x01 || (0xd0..=0xd7).contains(&marker) {
+            continue;
+        }
+
+        let segment_length =
+            u16::from_be_bytes([*bytes.get(index)?, *bytes.get(index + 1)?]) as usize;
+        if segment_length < 2 || index.checked_add(segment_length)? > bytes.len() {
+            return None;
+        }
+
+        if matches!(marker, 0xc0..=0xc3 | 0xc5..=0xc7 | 0xc9..=0xcb | 0xcd..=0xcf) {
+            if segment_length < 7 {
+                return None;
+            }
+            let height = u16::from_be_bytes([*bytes.get(index + 3)?, *bytes.get(index + 4)?]);
+            let width = u16::from_be_bytes([*bytes.get(index + 5)?, *bytes.get(index + 6)?]);
+            return Some((width, height));
+        }
+
+        index += segment_length;
+    }
+    None
+}
+
+fn cached_app_icon(steam_root: &Path, app_id: &str) -> Option<Vec<u8>> {
+    if app_id.parse::<u32>().is_err() {
+        return None;
+    }
+
+    let steam_root = steam_root.canonicalize().ok()?;
+    let library_cache = steam_root
+        .join("appcache")
+        .join("librarycache")
+        .canonicalize()
+        .ok()?;
+    if !library_cache.starts_with(&steam_root) || !library_cache.is_dir() {
+        return None;
+    }
+
+    let app_cache = library_cache.join(app_id).canonicalize().ok()?;
+    if !app_cache.starts_with(&library_cache) || !app_cache.is_dir() {
+        return None;
+    }
+
+    let entries = fs::read_dir(&app_cache).ok()?;
+    let mut icon_path = None;
+    for (index, entry) in entries.enumerate() {
+        if index >= MAX_ICON_DIRECTORY_ENTRIES {
+            return None;
+        }
+        let entry = entry.ok()?;
+        let path = entry.path();
+        if !is_hashed_jpeg(&path) {
+            continue;
+        }
+        if icon_path.is_some() {
+            return None;
+        }
+        icon_path = Some(path);
+    }
+
+    let icon_path = icon_path?.canonicalize().ok()?;
+    if !icon_path.starts_with(&app_cache) || !icon_path.is_file() {
+        return None;
+    }
+
+    let bytes = read_bounded(&icon_path, MAX_ICON_BYTES).ok()?;
+    let (width, height) = jpeg_dimensions(&bytes)?;
+    (width > 0 && width == height && width <= 256).then_some(bytes)
+}
+
 fn inspect_roots(roots: Vec<PathBuf>) -> SteamInspection {
     let mut games = Vec::new();
     let mut scan_incomplete = false;
@@ -253,10 +360,12 @@ fn inspect_roots(roots: Vec<PathBuf>) -> SteamInspection {
                     .join("appcache")
                     .join("stats")
                     .join(format!("UserGameStatsSchema_{app_id}.bin"));
+                let icon_jpeg = cached_app_icon(steam_root, &app_id);
                 games.push(GameCandidate {
                     app_id,
                     name,
                     schema_available: schema.is_file(),
+                    icon_jpeg,
                 });
             }
             if limit_reached {
@@ -282,7 +391,7 @@ fn inspect_roots(roots: Vec<PathBuf>) -> SteamInspection {
         games,
         client_session: "Not connected",
         achievements: "Not read",
-        note: "Installed local manifests are only candidates; this is not a complete owned library. No Steam client interface or schema contents are read.",
+        note: "Installed local manifests are only candidates; this is not a complete owned library. Steam connects only when you explicitly request achievement data.",
         scan_incomplete,
     }
 }
@@ -292,10 +401,44 @@ fn inspect_local_steam() -> SteamInspection {
     inspect_roots(candidate_roots())
 }
 
+#[tauri::command]
+fn read_game_achievements(app_id: String) -> steam_achievements::AchievementReadResult {
+    let Some(parsed_app_id) = steam_achievements::validate_app_id(&app_id) else {
+        return steam_achievements::AchievementReadResult {
+            status: "unavailable",
+            achievements: Vec::new(),
+            message: Some("Ungültige Steam-App-ID.".to_owned()),
+        };
+    };
+    for steam_root in candidate_roots() {
+        let discovery = library_roots(&steam_root);
+        let installed_here = discovery.roots.iter().any(|library_root| {
+            let Some(steamapps) = canonical_steamapps(library_root) else {
+                return false;
+            };
+            let manifest = steamapps.join(format!("appmanifest_{parsed_app_id}.acf"));
+            manifest_fields(&manifest, &app_id, &steamapps).is_some()
+        });
+        if installed_here {
+            return steam_achievements::read_for_app(&steam_root, &app_id);
+        }
+    }
+    steam_achievements::AchievementReadResult {
+        status: "unavailable",
+        achievements: Vec::new(),
+        message: Some(
+            "Das Spiel ist nicht in einer lokal geprüften Steam-Bibliothek installiert.".to_owned(),
+        ),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![inspect_local_steam])
+        .invoke_handler(tauri::generate_handler![
+            inspect_local_steam,
+            read_game_achievements
+        ])
         .run(tauri::generate_context!())
         .expect("error while running GameVault");
 }
@@ -345,6 +488,36 @@ mod tests {
             content,
         )
         .expect("write synthetic manifest");
+    }
+
+    fn synthetic_jpeg(width: u16, height: u16) -> Vec<u8> {
+        let mut bytes = vec![
+            0xff,
+            0xd8,
+            0xff,
+            0xc0,
+            0x00,
+            0x11,
+            0x08,
+            (height >> 8) as u8,
+            height as u8,
+            (width >> 8) as u8,
+            width as u8,
+            0x03,
+            0x01,
+            0x11,
+            0x00,
+            0x02,
+            0x11,
+            0x00,
+            0x03,
+            0x11,
+            0x00,
+            0xff,
+            0xd9,
+        ];
+        bytes.shrink_to_fit();
+        bytes
     }
 
     #[test]
@@ -452,6 +625,14 @@ mod tests {
         let steamapps = create_library(&steam_root);
         fs::write(steam_root.join("steam.exe"), b"synthetic").expect("create steam marker");
         write_manifest(&steamapps, "42", "42", "Example Game");
+        let icon_dir = steam_root.join("appcache").join("librarycache").join("42");
+        fs::create_dir_all(&icon_dir).expect("create synthetic icon directory");
+        let icon_bytes = synthetic_jpeg(32, 32);
+        fs::write(
+            icon_dir.join(format!("{}.jpg", "a".repeat(40))),
+            &icon_bytes,
+        )
+        .expect("write synthetic icon");
         let schema = steam_root
             .join("appcache")
             .join("stats")
@@ -466,6 +647,10 @@ mod tests {
         assert_eq!(result.games[0].app_id, "42");
         assert_eq!(result.games[0].name, "Example Game");
         assert!(result.games[0].schema_available);
+        assert_eq!(
+            result.games[0].icon_jpeg.as_deref(),
+            Some(icon_bytes.as_slice())
+        );
 
         let json = serde_json::to_value(result).expect("serialize inspection result");
         assert!(json.get("steam_roots").is_none());
@@ -475,6 +660,67 @@ mod tests {
                 .to_string()
                 .contains(&steam_root.to_string_lossy().to_string())
         );
+    }
+
+    #[test]
+    fn cached_icon_lookup_accepts_one_bounded_square_hashed_jpeg() {
+        let dir = TestDir::new();
+        let steam_root = dir.path().join("Steam");
+        let icon_dir = steam_root.join("appcache").join("librarycache").join("42");
+        fs::create_dir_all(&icon_dir).expect("create synthetic icon directory");
+        let icon_bytes = synthetic_jpeg(32, 32);
+        fs::write(
+            icon_dir.join(format!("{}.jpg", "b".repeat(40))),
+            &icon_bytes,
+        )
+        .expect("write synthetic icon");
+        fs::write(icon_dir.join("library_header.jpg"), b"not an app icon")
+            .expect("write unrelated artwork");
+
+        assert_eq!(cached_app_icon(&steam_root, "42"), Some(icon_bytes));
+        assert!(cached_app_icon(&steam_root, "../42").is_none());
+    }
+
+    #[test]
+    fn cached_icon_lookup_rejects_ambiguous_or_non_square_images() {
+        let dir = TestDir::new();
+        let steam_root = dir.path().join("Steam");
+        let icon_dir = steam_root.join("appcache").join("librarycache").join("42");
+        fs::create_dir_all(&icon_dir).expect("create synthetic icon directory");
+        fs::write(
+            icon_dir.join(format!("{}.jpg", "c".repeat(40))),
+            synthetic_jpeg(32, 32),
+        )
+        .expect("write first synthetic icon");
+        fs::write(
+            icon_dir.join(format!("{}.jpg", "d".repeat(40))),
+            synthetic_jpeg(32, 32),
+        )
+        .expect("write second synthetic icon");
+        assert!(cached_app_icon(&steam_root, "42").is_none());
+
+        fs::remove_file(icon_dir.join(format!("{}.jpg", "d".repeat(40))))
+            .expect("remove ambiguous synthetic icon");
+        fs::write(
+            icon_dir.join(format!("{}.jpg", "c".repeat(40))),
+            synthetic_jpeg(32, 16),
+        )
+        .expect("replace with non-square synthetic image");
+        assert!(cached_app_icon(&steam_root, "42").is_none());
+    }
+
+    #[test]
+    fn cached_icon_lookup_rejects_oversized_images() {
+        let dir = TestDir::new();
+        let steam_root = dir.path().join("Steam");
+        let icon_dir = steam_root.join("appcache").join("librarycache").join("42");
+        fs::create_dir_all(&icon_dir).expect("create synthetic icon directory");
+        let mut bytes = synthetic_jpeg(32, 32);
+        bytes.resize(MAX_ICON_BYTES as usize + 1, 0);
+        fs::write(icon_dir.join(format!("{}.jpg", "e".repeat(40))), bytes)
+            .expect("write oversized synthetic icon");
+
+        assert!(cached_app_icon(&steam_root, "42").is_none());
     }
 
     #[test]

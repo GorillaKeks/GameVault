@@ -32,7 +32,7 @@ The API Terms identify use with the application named in the key signup, require
 | Public profile summary | `ISteamUser/GetPlayerSummaries` | Requires a user Web API key and SteamID. Valve says this call should be used when a website needs to display user information; it cautions game clients to use client APIs for their own user context. Returned fields reflect profile visibility. | **Conditionally viable** only after confirming the GameVault key and desktop/web deployment model. Do not imply private data access. |
 | Owned games | `IPlayerService/GetOwnedGames` | Requires a user Web API key and SteamID. Valve says games are returned only if the player's owned games/game details are visible. Optional parameters include game info and played free games. | **Conditionally viable** with visible Game Details and a compliant key path; current local-only distribution does not have one. |
 | Recently played and playtime | `IPlayerService/GetRecentlyPlayedGames`, `GetSingleGamePlaytime` | Both list a user key. The single-game call says the Web API key must be associated with the AppID for results. Availability and privacy behavior must be verified per endpoint. | **Conditionally viable** after key/access review. Treat absent results as unknown, not zero. |
-| Earned achievement state | `ISteamUserStats/GetPlayerAchievements`; planning-only alternative is read-only local Steam client interface | Web API requires a user key, SteamID, AppID and has unresolved host/third-party use. Local interface/schema is undocumented for a companion and Steam-version-sensitive. | **Experimental read-only path authorized for planning only; implementation gated, completeness and Valve support not established.** |
+| Earned achievement state | `ISteamUserStats/GetPlayerAchievements`; experimental read-only local Steam-client interface | Web API requires a user key, SteamID, AppID and has unresolved host/third-party use. Local interface is undocumented for a companion and Steam-version-sensitive. | **Experimental prototype authorized under explicit owner risk acceptance; no live ABI validation, completeness or Valve support claim.** |
 | Achievement definitions/schema | `ISteamUserStats/GetSchemaForGame` | Requires a user Web API key and AppID; describes that game's published stats/achievement schema. No universal availability guarantee is documented. | **Conditionally viable**; only show schema/data actually returned. |
 | Public store catalog names/basic data | `IStoreService/GetAppList` | Valve describes this service as public store information; its method page lists “any Web API key,” requires pagination for the full catalog, and exposes timestamps. The older `ISteamApps/GetAppList` is marked deprecated. Host/key pairing and the intended use for this desktop product still need confirmation. | **Partly viable** for store catalog lookup after confirming registration/terms. It does not establish ownership or installed state. |
 | Full store descriptions, artwork, prices, other metadata | Store-facing methods and client/community surfaces vary | The reviewed docs do not establish one complete, unrestricted desktop API for all desired detail or grant blanket redistribution/caching rights for game artwork. | **Unresolved**. Use no packaged Steam/game art; verify each field and asset right before display/cache. |
@@ -46,7 +46,7 @@ Some public Web API methods may be callable without a key, according to Valve's 
 
 Steam's OpenID docs explicitly describe a browser-based website relying party. They do not document `localhost`, a custom URI scheme, or a native desktop application's return/callback registration. A website callback would require a server and is incompatible with the owner constraint. Identity alone does not make private player data available. Never collect a Steam password, cookie, Steam Guard code, or session token.
 
-**No supported account-authorization flow for the standalone local-only GameVault has been verified.** Before implementation, obtain current Valve confirmation or authoritative documentation for:
+**No supported account-authorization flow for the standalone local-only GameVault has been verified.** For public Web API account access, obtain current Valve confirmation or authoritative documentation before implementation of that route:
 
 1. May a free, open-source desktop app use an individual user's own standard key, entered and held locally, to send direct HTTPS requests to Steam?
 2. What domain/application must each user register, and does the Terms' confidentiality/no-sharing condition allow use by this third-party desktop app?
@@ -68,17 +68,18 @@ Do not add a backend (owner-prohibited) or ask users for API keys on assumption 
 
 Valve describes Steamworks SDK/API as a set of game/app integration features. The documented C++ `ISteamUserStats` methods operate in a game's Steam context; they are not a generic remote catalog of a user's entire account library. The SDK API is distinct from Web API methods and from direct access to Steam client internals.
 
-The proposed React/Tauri companion is not itself a Steam game. Do not assume that using the SDK grants library access or that Steam partner/publisher access exists. **Owner direction (2026-11-12) authorizes planning only for a narrow read-only SAM-inspired integration** that would load `steamclient.dll`, use specific versioned client interfaces and read a specific local achievement schema cache; this is an unsupported/private-interface path, not a documented Steamworks SDK/API guarantee. Implementation remains gated by ADR-007. See [`SAM_READ_ONLY_INTEGRATION.md`](SAM_READ_ONLY_INTEGRATION.md). It must not inspect process memory, inject into games, read credentials/session files, write achievements/stats, scrape Community pages, or bypass profile privacy. A read-only client integration cannot claim to enumerate a complete owned library by itself.
+The proposed React/Tauri companion is not itself a Steam game. Do not assume that using the SDK grants library access or that Steam partner/publisher access exists. **Owner direction (2026-11-15) explicitly accepts the unresolved risks and authorizes a narrow read-only SAM-inspired prototype** that loads `steamclient.dll`, requests fixed versioned interfaces and reads definitions/earned state through Steam's client pipe. This remains a private, undocumented, version-sensitive interface, not a documented Steamworks SDK/API guarantee. See [`SAM_READ_ONLY_INTEGRATION.md`](SAM_READ_ONLY_INTEGRATION.md) and ADR-007. It must not inspect process memory, inject into games, read credentials/session files, write achievements/stats, scrape Community pages, or bypass profile privacy. A read-only client integration cannot claim to enumerate a complete owned library by itself.
 
 ## Recommendations
 
 - **SteamID sign-in:** not selected; website flow conflicts with no-server constraint and a native desktop callback is undocumented. A manually entered SteamID is not authenticated.
-- **Public profile, owned games, playtime, achievements:** conditional on a Valve-approved local per-user key flow and Steam privacy settings. Not ready for implementation.
+- **Public profile, owned games, playtime:** conditional on a Valve-approved local per-user key flow and Steam privacy settings. Not ready for implementation.
+- **Achievements:** experimental per-game read-only Steam-client prototype exists under owner-accepted risk; no Valve support or client-build compatibility claim. No writes are permitted.
 - **Public store catalog:** potentially usable for basic catalog lookup, but verify registered key and endpoint host against current docs/terms before using.
 - **Installed games:** local read-only manifest/library scanning can provide best-effort detection; local formats carry no third-party stability contract.
 - **Library paths/local configuration:** narrow, read-only access is under research; full owned library and playtime do not follow from manifests alone.
-- **Game images and detailed metadata:** unresolved until source rights, endpoint and cache/distribution permissions are verified.
-- **Achievement mutation:** out of scope. No unlock, clear, reset, stat edit, automation, or SAM write behavior. The read-only SAM-inspired definitions/state path is authorized for planning only; implementation remains gated. See [`SAM_READ_ONLY_INTEGRATION.md`](SAM_READ_ONLY_INTEGRATION.md).
+- **Game images and detailed metadata:** unresolved until source rights, endpoint and cache/distribution permissions are verified. A focused artwork follow-up is recorded below.
+- **Achievement mutation:** out of scope. No unlock, clear, reset, stat edit, automation, or SAM write behavior. The read-only SAM-inspired definitions/state prototype is authorized, experimental and not live-validated. See [`SAM_READ_ONLY_INTEGRATION.md`](SAM_READ_ONLY_INTEGRATION.md).
 
 ## Primary sources reviewed
 
@@ -95,6 +96,38 @@ The proposed React/Tauri companion is not itself a Steam game. Do not assume tha
 - Steamworks SDK/API overview: https://partner.steamgames.com/doc/sdk and https://partner.steamgames.com/doc/sdk/api
 - Steam branding guidance: https://partner.steamgames.com/doc/marketing/branding
 
+## Game artwork follow-up (2026-11-15)
+
+Valve's current Steamworks graphical-assets documentation confirms that games have an App Icon (184×184 JPG) for compact Community/Client presentation and separate Library assets such as the 600×900 Library Capsule. It does **not** document a public third-party desktop retrieval endpoint or grant GameVault permission to hotlink, cache, redistribute, or package those images. The Steam Web API Terms page does not specifically settle these artwork questions and still identifies itself as last updated July 2010.
+
+**Local cache feasibility was verified on 2026-11-15.** A recursive, read-only inspection of this machine's `appcache/librarycache` found 1,588 image files and matching 32×32 hashed JPEG icons for all seven games currently detected by GameVault. The cache is client-managed and undocumented, so availability and layout can change across Steam versions or machines.
+
+**Implemented local-only behavior:** for each detected AppID, GameVault checks only `appcache/librarycache/<appid>` under the canonical Steam root. It accepts one unambiguous 40-hex-name JPEG icon, validates it as a small square image, caps the file at 16 KiB and the directory at 128 entries, and returns image bytes without returning a filesystem path. The UI renders the bytes as a data URL and falls back to the game's initial if the image is absent or invalid. This makes no network request, sends no AppIDs to an image host, and does not modify or copy Steam files into the repository. This is best-effort local display of artwork already cached by Steam, not permission to bundle or redistribute game art. External icon retrieval, packaged art and export of the images remain out of scope until their source and usage conditions are verified.
+
+**Next work:** run the updated desktop build and verify the local icons appear, the initials fallback works for a missing cache entry, and the behavior remains offline. Revisit remote sources only if local coverage proves insufficient and a documented source/usage basis is found.
+
+### Support access attempt and ready-to-submit inquiry
+
+On 2026-11-15 the official Steamworks Support link was opened after the user completed Steam sign-in. `HelpWithPublishing` redirected to the general Steam Support home rather than presenting a developer ticket form. The official Steamworks Development group says its discussions are restricted to accounts with Steamworks access; its main page offered a “send join request” action. The owner explicitly approved sending that request, but Steam rejected it because the group had reached its maximum number of pending join requests and directed the user to contact a moderator. The selected group moderator's profile exposes a friend-request action but no direct-message action. The owner later explicitly approved a public group comment, but no comment editor was available to the signed-in non-member account; Steam's group page also states the group is restricted to Steamworks-access accounts and only announcements are public. No ticket, join request, friend request, moderator message, or public post was submitted. Do not contact a moderator by friend request or use another public channel under this identity without the owner's explicit authorization for that specific action and audience.
+
+If Steamworks developer-support access becomes available, submit this inquiry without account credentials, SteamIDs, installed-game IDs, logs, or screenshots:
+
+> **Subject:** Guidance on displaying Steam game app icons in a local-only desktop app
+>
+> Hello,
+>
+> We are developing GameVault, a free and open-source Windows desktop application for organizing a player's Steam games. It has no backend, hosted account, shared API key, or telemetry. The app can detect locally installed games and we would like to show the matching Steam app icon beside each game.
+>
+> Which documented interface or asset URL should a third-party desktop application use to retrieve the 184×184 app icon for a known AppID? Is direct display/hotlinking permitted for this use, or must the image be downloaded? If local caching is permitted, what retention/refresh limits and attribution requirements apply? Does retrieval require a registered Steamworks application or API key, and are there rate limits or other terms we should follow?
+>
+> We intend to request artwork only when the user asks GameVault to refresh its local library, disclose any external requests, and avoid sending account credentials or other Steam session data. Please point us to the applicable current documentation or terms.
+>
+> Thank you.
+
+This draft is not a claim that the described use is already permitted. Keep icon retrieval unimplemented until Valve provides a documented route and usage conditions, or the owner chooses an explicitly reviewed alternative.
+
+Primary references checked 2026-11-15: [Valve Graphical Assets - Overview](https://partner.steamgames.com/doc/store/assets?l=english), [Valve Library Assets](https://partner.steamgames.com/doc/store/assets/libraryassets?language=english), and [Steam Web API Terms of Use](https://steamcommunity.com/dev/apiterms). These references document asset types and general API terms, not the missing third-party icon-fetch/caching grant.
+
 ## Phase 1.5 revalidation addendum (2026-11-12)
 
 The current Valve documentation reconfirms the conditional assessment. The Steam Web API overview adds a material host/key ambiguity: it describes `api.steampowered.com` as the public host and says every call to `partner.steam-api.com` must contain a valid publisher key; the endpoint method references nevertheless show `partner.steam-api.com` URLs while documenting user keys for player methods. Do not copy a method URL into a client without resolving this inconsistency. Any approved user-key client path must use the host and method Valve confirms for that key type.
@@ -105,6 +138,6 @@ The requested data scope is evaluated in [`V1_FEATURE_FEASIBILITY.md`](V1_FEATUR
 
 **OpenID implementation security note:** use a fixed Steam OP endpoint and maintained OpenID 2.0 relying-party library. Verify signature, required signed fields, discovery, exact `return_to`, and one-time nonce/replay protection before accepting the SteamID. Bind a one-time state value to the initiated user action, use TLS and short-lived/revocable GameVault sessions, redact callback parameters, and never accept a SteamID from an unverified callback. Valve's OpenID flow does not issue a general API token or grant access to private information.
 
-**Current conclusion:** no backend is permitted. Valve confirmation for per-user Web API keys remains unresolved. Separately, the owner has authorized planning only for a read-only SAM-inspired local client/cache path; this relies on undocumented client interfaces and a binary cache and carries compatibility/policy uncertainty. It does not provide complete library enumeration or complete account-wide playtime. The four owner-mandated features remain mandatory; label missing data honestly and return for an owner decision if no permitted/reliable source supports a feature.
+**Current conclusion:** no backend is permitted. Valve confirmation for per-user Web API keys remains unresolved. Separately, the owner has accepted the risk for an experimental read-only SAM-inspired local client path; it uses undocumented client interfaces and carries policy/compatibility uncertainty. It does not provide complete library enumeration or account-wide playtime. The four owner-mandated features remain mandatory; label missing data honestly and return for an owner decision if no permitted/reliable source supports a feature.
 
 The official Web API overview, key authentication page, OpenID and ownership page, endpoint references, API terms and OpenID 2.0 validation spec were re-opened on 2026-11-12. See the full source list in [`FEASIBILITY_REVIEW.md`](FEASIBILITY_REVIEW.md).

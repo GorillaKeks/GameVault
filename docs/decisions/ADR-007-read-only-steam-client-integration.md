@@ -1,7 +1,7 @@
 # ADR-007: Read-Only Steam Client and Achievement Schema Integration
 
-**Status:** Planning only; implementation is gated on policy, security, compatibility, and test review
-**Decision date:** 2026-11-12. **Planning-only clarification:** 2026-11-15.
+**Status:** Experimental read-only prototype authorized by owner on 2026-11-15 despite unresolved Valve-policy and client-compatibility risks. Not a Valve approval or release-ready integration.
+**Decision date:** 2026-11-12. **Owner risk acceptance and implementation review:** 2026-11-15.
 
 ## Context
 
@@ -25,6 +25,32 @@ Before adapter code is written, review and record all of the following:
 
 Until these gates pass, work is limited to research, threat modeling, interface design, and test planning. If policy remains unanswered, keep the adapter unimplemented and return with the exact question and evidence needed for an owner decision.
 
+## Owner risk acceptance and gate review (2026-11-15)
+
+After the remaining limitations were explained, the owner explicitly accepted the documented unsupported-interface and compatibility risks and authorized a strictly read-only prototype. This records owner acceptance only; it does not change Valve's policy, establish support, or make the prototype ready for release.
+
+| Gate | Review result | Evidence / remaining requirement |
+|---|---|---|
+| 1. Valve policy for a third-party local desktop client | **OWNER ACCEPTED RESIDUAL RISK; NOT CLEARED BY VALVE** | Current Valve docs describe Steamworks stats/achievements in the game-integrated SDK context and document Web API alternatives. They do not establish permission or support for GameVault directly loading private/versioned client interfaces. No written Valve answer for this use is recorded. This remains an evidence gap, not a claim that Valve has expressly prohibited it. |
+| 2. Native-boundary threat review | **PROTOTYPE REVIEW COMPLETE; LIVE/RELEASE REVIEW OPEN** | The prototype loads only canonical `steamclient.dll` under a validated Steam root, requests exact interface IDs, limits requests and returned counts/text, uses typed IPC, releases the pipe/library with RAII, and defines no setter/reset calls. It does not inspect process memory, inject into games, read credentials, or write Steam files. Raw ABI pointers and Steam-owned strings remain inherently unsafe; the concrete integration has not been exercised against Steam. Review again before release. |
+| 3. Steam client compatibility set | **PINNED INTERFACE IDs; CLIENT BUILDS UNSUPPORTED/UNVERIFIED** | The prototype requests x64 Windows interfaces `SteamClient018`, `SteamUser012` and `SteamUserStats013`; missing IDs fail closed. No Steam client build range or ABI guarantee is established, and no live client was probed. This is an experimental target, not a support matrix. |
+| 4. Deterministic adapter tests | **MOCK MAPPING TESTS PASS; NATIVE ABI TESTS OPEN** | `cargo test --offline` passes 17 Rust tests, including synthetic read-only achievement fixtures for earned/locked mapping, partial-state failure and oversized lists. They do not validate the real DLL ABI, callback layout or version behavior. No real account or live interface was used. |
+| 5. Coverage and product claims | **PASS — LIMITED CLAIMS** | UI requests achievements per locally installed game, displays unavailable explicitly, and does not claim complete account library or playtime. Per-game counts are shown only after a complete response. Recheck these claims against future changes. |
+
+### Policy and interface evidence reviewed
+
+- Valve's [Steamworks API overview](https://partner.steamgames.com/doc/sdk/api) describes the API as enabling a game to use Steam systems; the [stats/achievements guide](https://partner.steamgames.com/doc/features/achievements) describes use from within the integrated game. The overview explains that Steamworks initializes against the running client and that interfaces are versioned, but it does not provide a third-party desktop companion contract for direct `steamclient.dll` use.
+- Valve's [ISteamUserStats Web API reference](https://partner.steamgames.com/doc/webapi/ISteamUserStats) lists `GetPlayerAchievements` (unlocked achievements) and `GetSchemaForGame` (the complete definition list); both require a user authentication key. This is a separate route and does not clear the private client adapter or settle direct user-key use in a distributed local application.
+- Valve's [Steam Web API Terms](https://steamcommunity.com/dev/apiterms), whose page says it was last updated July 2010, require keeping the API key confidential, identify the application through the API key sign-up form, and require user-requested retrieval. The text does not specifically decide the private client-interface use proposed here.
+
+### Third-party technical comparator: HxB SAM Enhanced
+
+The owner-provided [HxB SAM Enhanced repository](https://github.com/Hegxib/SteamAchievementManager-enhanced) provides concrete evidence that this technical path is feasible in a working Windows tool. Its [`Client.cs`](https://github.com/Hegxib/SteamAchievementManager-enhanced/blob/main/SAM.API/Client.cs) requests versioned interfaces including `SteamClient018`, connects a global Steam user, and obtains `SteamUserStats013`. Its [`Steam.cs`](https://github.com/Hegxib/SteamAchievementManager-enhanced/blob/main/SAM.API/Steam.cs) loads `steamclient.dll` and resolves native exports. Its [`Manager.cs`](https://github.com/Hegxib/SteamAchievementManager-enhanced/blob/main/SAM.Game/Manager.cs) calls `RequestUserStats` and `GetAchievementAndUnlockTime` to display state.
+
+This materially strengthens the technical-feasibility evidence; the adapter is no longer only a planning hypothesis inferred from the original SAM. It does not close the policy or compatibility gates: successful operation in another tool is not Valve approval, a public third-party API contract, or a GameVault-supported client-version matrix. The HxB README also describes unlock/commit and bulk-reset features, its source includes `SetAchievement` and `SetStat` calls, and it warns users that the tool modifies achievement data and may violate Steam's Terms of Service. Those capabilities and risks are outside GameVault's read-only boundary. Do not copy or adapt its code; its README describes a mix of original SAM components and separately copyrighted enhancements, so any future reuse would need an exact file-level license/provenance review.
+
+The implementation is a first experimental prototype under the owner's explicit risk acceptance. Keep it opt-in per game, visibly label it experimental, do not make Valve-support or broad compatibility claims, and do not use a real Steam account for automated tests. A written Valve response remains the best way to close the policy uncertainty; the unresolved native ABI/build compatibility remains the principal technical risk.
+
 ## Consequences
 
 - Interface versions and binary cache structure may change without notice. Fail closed on an unknown interface/schema and report achievement data unavailable.
@@ -41,3 +67,5 @@ Until these gates pass, work is limited to research, threat modeling, interface 
 - [SAM achievement manager source](https://github.com/gibbed/SteamAchievementManager/blob/de8b71048a0cee3c3e97cd8535e0f55ca86513e4/SAM.Game/Manager.cs)
 - [Valve Steamworks SDK API overview](https://partner.steamgames.com/doc/sdk/api)
 - [Valve stats/achievements documentation](https://partner.steamgames.com/doc/features/achievements)
+- [Valve ISteamUserStats Web API reference](https://partner.steamgames.com/doc/webapi/ISteamUserStats)
+- [Steam Web API Terms of Use](https://steamcommunity.com/dev/apiterms)

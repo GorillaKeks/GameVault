@@ -1,20 +1,20 @@
 # GameVault — SAM-Inspired Read-Only Steam Client Path
 
-**Research baseline:** 2026-11-12. **Security/compatibility planning update:** 2026-11-15.
-**Owner direction:** plan SAM's connection, game-selection and achievement-reading path (points 1–3 from the discussion), with GameVault strictly read-only. This does not authorize adapter implementation, achievement/stat writes, or copying SAM source/assets.
-**Status:** Technical approach and pre-implementation review plan documented; the gates have not been approved or passed. Prototype currently discovers local installed manifests and reports whether the expected schema file exists; it performs no Steam client calls and reads no schema contents.
+**Research baseline:** 2026-11-12. **Implementation update:** 2026-11-15.
+**Owner direction:** experimental read-only Steam-client achievement reads authorized after explicit acceptance of the unresolved policy and compatibility risks. Achievement/stat writes and copying SAM source/assets remain prohibited.
+**Status:** A per-game opt-in prototype requests exact interfaces `SteamClient018`, `SteamUser012` and `SteamUserStats013`, requests the signed-in user's stats through the client pipe, and displays definitions and earned state. No real Steam session has been used to validate the native ABI. See ADR-007 for the gate-by-gate result.
 
 ## What the requested path means
 
-The owner has authorized planning the read-only subset of SAM's approach. This changes the earlier product preference to avoid `steamclient.dll` and undocumented cache formats, but it does **not** authorize adapter implementation or establish Valve endorsement, policy approval or interface stability. The design must be treated as an experimental, Windows/Steam-version-sensitive local integration with a fallback/error state, not a guaranteed Steam API. Implementation remains gated by ADR-007's policy, security, compatibility and test review.
+The owner has explicitly accepted the read-only interface risk and authorized a prototype. This changes the earlier planning-only direction, but does **not** establish Valve endorsement, policy approval or interface stability. Treat the integration as experimental, Windows/Steam-version-sensitive and fail-closed, not as a guaranteed Steam API.
 
-The reviewed SAM source revision is `de8b71048a0cee3c3e97cd8535e0f55ca86513e4`. SAM is a .NET Framework/WinForms x86 program. Its implementation uses custom P/Invoke and vtable wrappers rather than the public Steam Web API. An independently written Rust read-only adapter remains a planning candidate only; no SAM source code or artwork is being imported.
+The reviewed SAM source revision is `de8b71048a0cee3c3e97cd8535e0f55ca86513e4`. SAM is a .NET Framework/WinForms x86 program. Its implementation uses custom P/Invoke and vtable wrappers rather than the public Steam Web API. GameVault now contains an independently authored experimental Rust read-only adapter; no SAM source code or artwork is imported.
 
 ## Point 1 — connect to the logged-in Steam client
 
 SAM reads the install path from the Steam registry key, loads `steamclient.dll`, resolves its `CreateInterface` and callback exports, requests versioned interfaces such as `SteamClient018`, creates a Steam pipe, and connects to the global logged-in user. It then obtains interfaces including `SteamUser012` and `SteamUserStats013`. See SAM's [`Steam.cs`](https://github.com/gibbed/SteamAchievementManager/blob/de8b71048a0cee3c3e97cd8535e0f55ca86513e4/SAM.API/Steam.cs) and [`Client.cs`](https://github.com/gibbed/SteamAchievementManager/blob/de8b71048a0cee3c3e97cd8535e0f55ca86513e4/SAM.API/Client.cs).
 
-This is not Steam OpenID, a Web API user key, or a general documented API for third-party desktop tools. It does not read a Steam password or cookie in the reviewed code. It also does not inject into a game process in the reviewed path: it loads the Steam client library in the companion process and communicates through Steam's client pipe.
+This is not Steam OpenID, a Web API user key, or a general documented API for third-party desktop tools. The GameVault prototype does not read a Steam password or cookie, and does not inject into a game process: it loads the Steam client library in its own process and communicates through Steam's client pipe.
 
 **GameVault read-only boundary:** Rust-only native module; load from a validated Steam installation path; request only the specific read methods needed; no frontend-controlled DLL paths or arbitrary interface names; do not expose interface pointers through Tauri IPC. Never bind/call `SetAchievement`, `ClearAchievement`, `SetStat`, `StoreStats`, or `ResetAllStats`. A failed/unknown interface version must fail closed with “Steam integration unavailable,” not attempt memory scanning, process injection, or guessed vtable layouts.
 
@@ -58,52 +58,64 @@ SAM's repository `LICENSE.txt` is the zlib license. Its conditions include retai
 
 No SAM code or icons are copied. Before adapting an exact file, perform the file/dependency/asset provenance audit and preserve all license obligations. An independently authored adapter still must account for Steam policy, interface compatibility, local-data security and GameVault's eventual license; clean-room code does not convert an undocumented Steam interface into a supported one.
 
-## Pre-implementation security and compatibility review
+## Security and compatibility review
 
-This is a design review only. It does not approve implementation. The private Steam client interface and binary schema have no third-party stability contract established by the reviewed sources. No GameVault-supported Steam client version can be declared from the SAM source revision alone.
+The design review informed the current prototype but does not make the private Steam client interface or binary schema supported. No GameVault-supported Steam client build range can be declared from the reviewed sources.
 
 | Boundary / failure | Required design before implementation | Fail-closed result |
 |---|---|---|
 | Steam DLL discovery and loading | Select and review a Steam-root discovery source; canonicalize it; load only the expected DLL from inside that root. Never accept a DLL path or interface name from the WebView, environment override, or imported file. | Missing, ambiguous, or out-of-root DLL: integration unavailable; do not search other directories or fall back to guessed paths. |
-| Native interface and callback ABI | Declare exact interface identifiers and method slots for each explicitly supported client build. Keep raw pointers and callback structures private to one Rust module. Bound callback waits and cleanly release interfaces/pipes on timeout, shutdown, or partial initialization. | Unknown identifier, ABI mismatch, malformed callback, timeout, or partial setup: abort the request and return unavailable; no vtable scanning or guessed fallback. |
+| Native interface and callback ABI | Prototype pins exact interface IDs and uses fixed read-only vtable slots in one Rust module. Keep raw pointers and callback structures private. Callback wait is bounded and handles/pipes are released on error. | Missing interface ID, malformed/irrelevant callback, timeout, or partial setup returns unavailable; no vtable scanning or guessed fallback. ABI mismatch remains a crash risk because the native boundary has not been live-validated. |
 | Read-only guarantee | Define only the read operations needed for session identity, selected AppID and earned state. Do not define setter/reset methods or generic vtable dispatch in the app-facing interface. Review the exact native calls and teardown path before every implementation change. | Any operation outside the read allowlist: reject it; no writes, resets, game launch, injection, process/memory access, or Steam file mutation. |
-| Local schema file | Open only the exact `UserGameStatsSchema_<validated AppID>.bin` under the canonical Steam cache directory. Enforce byte, nesting, entry-count, string-length and parse-time limits. Treat every byte and field as untrusted. | Missing, stale, oversized, malformed, or unknown schema: achievement data unavailable; never infer all locked, zero progress, or full coverage. |
+| Achievement definitions and state | Prototype reads the definition count, IDs, display attributes and earned state from the selected app's Steam client stats interface. It does not parse local schema bytes. Returned count and text length are limited and a single missing state fails the whole response. | Missing definitions/status, unsupported app or interface, timeout or malformed response returns unavailable; never infer all locked or zero achievements. |
 | Tauri boundary and diagnostics | Expose a typed result containing only display data, source/freshness and explicit unavailable/error states. Keep pointers, paths, raw schema bytes and raw callbacks inside Rust; redact identifiers and parser/input details from logs. | Invalid IPC inputs are rejected. No arbitrary path, SQL, HTTP, shell, native handle, or raw parser error reaches the WebView. |
-| Policy and product claims | Review current Valve terms and relevant first-party documentation for this exact third-party desktop behavior; track unanswered questions separately from technical feasibility. Keep library and account-wide playtime marked unresolved. | No affirmative policy basis: leave the adapter unimplemented; describe the coverage limit and return the choice to the owner. |
+| Policy and product claims | Valve terms and first-party documentation reviewed; the exact third-party desktop behavior remains unanswered. Owner accepted this residual risk for an experimental prototype only. Keep library and account-wide playtime marked unresolved. | No Valve endorsement or release claim; keep the prototype opt-in and experimental. Revisit if policy guidance changes. |
 
 ### Compatibility declaration
 
-There is no supportable version range yet. Before implementation, define a proposed matrix of Steam client build, Windows architecture, exact interface identifiers, callback layout/version and schema format revision. Each row must have a reproducible synthetic/mock test result and an explicit unknown-version outcome. After implementation is separately authorized, a compatibility claim would still require controlled smoke evidence for each declared row; success on one machine or SAM's compatibility is not evidence for other builds. Do not auto-select a nearby interface version when the exact one is unavailable.
+There is no supportable Steam client build range yet. The prototype pins SteamClient018, SteamUser012 and SteamUserStats013, targets 64-bit Windows, and has synthetic mapping tests; callback lifecycle and native ABI remain untested. Missing exact interfaces fail closed. A compatibility claim requires a separately reviewed, controlled smoke test for every declared build; success on one machine or SAM's compatibility is not evidence for other builds. Do not auto-select a nearby interface version.
 
 ### Synthetic and mock test plan
 
-These tests are required before the implementation gate can be reviewed; none are implemented or run yet.
+The synthetic/mock plan remains the target for native-boundary validation. Current tests cover read-only mapping and bounds only; they do not simulate the DLL, vtable or callback ABI.
 
 | Test group | Synthetic cases | Required assertion |
 |---|---|---|
 | Interface negotiation | Exact supported ID; missing ID; unknown newer/older ID; wrong architecture; loader error | Only exact declared IDs proceed; all other cases return unavailable without fallback or process injection. |
 | Callback lifecycle | Success; failure result; unrelated AppID; duplicate/out-of-order callback; timeout; shutdown during wait | Bounded completion, correct AppID correlation, and resource cleanup on every exit. |
-| Schema parser | Valid minimal schema; no achievements; truncated input; invalid token/type; duplicate fields; invalid encoding; excessive bytes/depth/entries/string length | Deterministic typed output for valid data; bounded error for invalid input; no panic, unbounded allocation, or fabricated defaults. |
+| Achievement response mapping | Complete definitions and status; no achievements; missing definition/status; duplicate IDs; excessive counts/text | Deterministic read-only DTO for complete data; fail closed for partial or oversized data; no fabricated defaults. |
 | Earned-state mapping | Earned/locked entries; missing state; unknown achievement ID; absent schema | Preserve unknown/unavailable separately from locked; never compute a completeness or progress percentage from missing data. |
 | Read-only invariant | Mock call recorder with the allowed read surface; invalid operation request | No setter/reset operation exists in the adapter interface, and the recorder observes only the approved read allowlist. |
 | Path and input validation | Invalid AppID; path traversal text; non-canonical/out-of-root path; missing file; file replaced during open | Inputs cannot escape the canonical expected directory; invalid input produces unavailable without reading unrelated files. |
 | Resource / parser robustness | Property-based or fuzz-generated arbitrary schema bytes within and above limits | Parsing remains bounded and never invokes Steam or writes files. |
 
-Use only synthetic schema fixtures and mock interface/callback providers for these tests. No credentials, real Steam account data, achievement mutation, or live interface probing belongs in unit tests. Any later live compatibility smoke test requires its own reviewed plan and must remain read-only.
+Use synthetic achievement fixtures and mock interface/callback providers for unit tests. Current mock tests cover state mapping and bounds but not interface negotiation or callback lifecycle. No credentials or real account data belong in unit tests. Any later live compatibility smoke test requires its own reviewed plan and must remain read-only.
 
 ## Phase gate
 
-Owner direction authorizes planning the read-only points 1–3; it does **not** make all mandatory v1 data sources complete, and it does not authorize implementation or write behavior. Before implementing the private Steam client/schema calls:
+Owner direction now authorizes the experimental read-only prototype despite unresolved Valve-policy/compatibility uncertainty. It does **not** make all mandatory v1 data sources complete or authorize write behavior. Before expanding or releasing this integration:
 
-1. Keep the standing `MASTER_PROMPT.md` and architecture/ADR records aligned with this planning-only direction. Preserve the absolute prohibition on achievement/stat writes.
+1. Keep `MASTER_PROMPT.md` and architecture/ADR records aligned with the owner-accepted experimental status. Preserve the absolute prohibition on achievement/stat writes.
 2. Keep the direct Web API user-key question open; this route is an alternative, not evidence of Valve approval.
-3. Obtain review of the threat, compatibility and synthetic/mock-test plan above. Writing the plan does not mean the review passed. No real account should be used for risky behavior.
+3. Add native callback/interface mock tests and separately review any live compatibility smoke test. No real account is used in automated tests.
 4. Keep complete library and complete playtime blocked until their own data sources are validated.
 5. Do not use SAM's remote `games.xml` as a product dependency without separate owner approval and source/availability review.
 
-The current Rust command is intentionally narrower than points 1–3: it enumerates local manifest candidates and checks schema-file presence, without reading the schema or connecting to Steam. This is not achievement support and does not establish ownership. It is a local-discovery prototype only.
+The local scanner still enumerates installed manifest candidates and checks schema-file presence; that check is informational only and does not establish ownership or achievement availability. The new per-game command connects only after explicit user action.
 
-No application code, calls to the running Steam client, or Steam data parsing have been performed as part of this review.
+## Achievement display contract (2026-11-15)
+
+The UI must not imply that a game's achievements are locked, absent, or complete based only on schema-file presence. The current prototype uses this display contract:
+
+- Show each achievement's source-provided name, description and icon only when present; missing optional metadata stays missing rather than being invented.
+- Distinguish **earned**, **not earned** and **unknown/unavailable**. “Not earned” is valid only when the source returned the achievement's state and the definition set is known complete for that game.
+- Show an `earned / total` count only when both the earned-state result and complete definition list apply to the same AppID and refresh snapshot. Do not calculate a completion percentage from partial, stale or absent data.
+- Represent private profile, unsupported game, missing/stale schema, unsupported client version, offline/unavailable session and parser/interface failure as unavailable states, with no inferred locked achievements.
+- Keep the whole feature read-only: no unlock, reset, stat update, or other Steam/game-state action in UI or IPC.
+
+Valve's currently published `ISteamUserStats` reference lists `GetPlayerAchievements` as returning a user's unlocked achievements and requires a user authentication key; `GetSchemaForGame` returns the complete game definition list and also requires a user key. These documented Web API methods provide a useful data contract, but the pages do not answer whether embedding each end user's key in a distributed local desktop application is permitted under the project's constraints. Valve's API Terms (last updated July 2010 on the reviewed page) identify an application via the API-key sign-up form, require the key to remain confidential and say Steam data is retrieved only as requested by the end user. This is insufficient to resolve that direct-client use question. The SDK stats documentation describes offline cache behavior in the integrated game's API context; it does not document a generic third-party desktop client interface.
+
+The direct Web API user-key question remains open. The private client route is now implemented experimentally under owner risk acceptance, but is still not Valve-approved and has not been live-validated. Do not infer Valve support or broad Steam-version compatibility from successful operation in another project. No real Steam session has been used in this implementation task.
 
 ## Sources reviewed 2026-11-12
 
@@ -115,4 +127,5 @@ No application code, calls to the running Steam client, or Steam data parsing ha
 - [SAM zlib license](https://github.com/gibbed/SteamAchievementManager/blob/de8b71048a0cee3c3e97cd8535e0f55ca86513e4/LICENSE.txt)
 - [Valve Steamworks API overview](https://partner.steamgames.com/doc/sdk/api)
 - [Valve Steamworks stats and achievements](https://partner.steamgames.com/doc/features/achievements)
+- [Valve ISteamUserStats Web API reference](https://partner.steamgames.com/doc/webapi/ISteamUserStats)
 - [Steam Web API Terms](https://steamcommunity.com/dev/apiterms)

@@ -2,11 +2,11 @@
 
 **Your Gaming Progress. One Place.**
 
-GameVault is a Windows desktop companion for understanding and organizing a player's Steam library and progress. Version 1 is Steam-only. A Tauri 2 + React/TypeScript + Rust scaffold now lives in `app/`; its first read-only prototype detects local Steam installs and installed-game manifests.
+GameVault is a Windows desktop companion for understanding and organizing a player's Steam library and progress. Version 1 is Steam-only. A Tauri 2 + React/TypeScript + Rust prototype now lives in `app/`; it detects local Steam installs and installed-game manifests and has an experimental, opt-in read-only achievement view.
 
 ## Current status
 
-The repository contains the product brief, Phase 1.5–1.7 research and an initial local detection prototype. The owner requires a local-only app with four mandatory v1 features: Steam library, installed-game detection, playtime and achievements. Current status remains **CONDITIONAL GO**: the prototype only sees local installed manifests; it does not yet connect to Steam or read achievements. The private Steam client/cache route is unsupported and does not provide a complete owned library or account-wide playtime. Valve Web API key use remains unresolved. A GameVault backend and all achievement/stat writes are prohibited. See [Phase 1.6 feature feasibility](docs/V1_FEATURE_FEASIBILITY.md), the [Phase 1.7 decision package](docs/PHASE_1_7_DECISION_PACKAGE.md), and the [SAM read-only integration review](docs/SAM_READ_ONLY_INTEGRATION.md).
+The repository contains the product brief, Phase 1.5–1.7 research and a local Steam prototype. The owner requires a local-only app with four mandatory v1 features: Steam library, installed-game detection, playtime and achievements. The experimental achievement reader connects to the logged-in Steam client only after an explicit per-game request. It uses private, version-sensitive interfaces, has not been tested against a live Steam session, and is not endorsed or documented as a third-party API by Valve. It does not solve complete owned-library or account-wide playtime coverage. Valve Web API key use remains unresolved. A GameVault backend and all achievement/stat writes are prohibited. See [Phase 1.6 feature feasibility](docs/V1_FEATURE_FEASIBILITY.md), the [Phase 1.7 decision package](docs/PHASE_1_7_DECISION_PACKAGE.md), and the [SAM read-only integration review](docs/SAM_READ_ONLY_INTEGRATION.md).
 
 ## Intended technology direction
 
@@ -19,7 +19,7 @@ The initial scaffold uses the candidate stack recorded in [Foundation readiness]
 
 ## Scope
 
-The v1 goal is a local-first Windows app for the four mandatory Steam features above. Data availability depends on Steam privacy settings and the limitations of each data source. Other storefronts, account automation, game modification, achievement unlock/reset, anti-cheat evasion and all GameVault cloud services are out of scope. The owner has authorized planning the narrow read-only Steam client/schema route in [ADR-007](docs/decisions/ADR-007-read-only-steam-client-integration.md); implementation remains gated and this is not a claim of Valve support or complete library coverage.
+The v1 goal is a local-first Windows app for the four mandatory Steam features above. Data availability depends on Steam privacy settings and the limitations of each data source. Other storefronts, account automation, game modification, achievement unlock/reset, anti-cheat evasion and all GameVault cloud services are out of scope. The owner has explicitly accepted the unresolved risks and authorized an experimental, read-only Steam client route in [ADR-007](docs/decisions/ADR-007-read-only-steam-client-integration.md); this is not a claim of Valve support or complete library coverage.
 
 ## Repository
 
